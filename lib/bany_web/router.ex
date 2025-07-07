@@ -18,6 +18,11 @@ defmodule BanyWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+
+    live "/categories", CategoryLive.Index, :index
+    live "/categories/new", CategoryLive.Form, :new
+    live "/categories/:id", CategoryLive.Show, :show
+    live "/categories/:id/edit", CategoryLive.Form, :edit
   end
 
   # Other scopes may use custom stacks.
