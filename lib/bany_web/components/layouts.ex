@@ -41,6 +41,9 @@ defmodule BanyWeb.Layouts do
       <div class="flex-none">
         <ul class="flex flex-column px-1 space-x-4 items-center">
           <li>
+            <a href={~p"/plans"} class="btn btn-ghost">Plans</a>
+          </li>
+          <li>
             <a href={~p"/categories"} class="btn btn-ghost">Categories</a>
           </li>
           <li>

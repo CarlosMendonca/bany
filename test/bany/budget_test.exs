@@ -56,4 +56,58 @@ defmodule Bany.BudgetTest do
       assert %Ecto.Changeset{} = Budget.change_category(category)
     end
   end
+
+  describe "plans" do
+    alias Bany.Budget.Plan
+
+    import Bany.BudgetFixtures
+
+    @invalid_attrs %{name: nil}
+
+    test "list_plans/0 returns all plans" do
+      plan = plan_fixture()
+      assert Budget.list_plans() == [plan]
+    end
+
+    test "get_plan!/1 returns the plan with given id" do
+      plan = plan_fixture()
+      assert Budget.get_plan!(plan.id) == plan
+    end
+
+    test "create_plan/1 with valid data creates a plan" do
+      valid_attrs = %{name: "some name"}
+
+      assert {:ok, %Plan{} = plan} = Budget.create_plan(valid_attrs)
+      assert plan.name == "some name"
+    end
+
+    test "create_plan/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Budget.create_plan(@invalid_attrs)
+    end
+
+    test "update_plan/2 with valid data updates the plan" do
+      plan = plan_fixture()
+      update_attrs = %{name: "some updated name"}
+
+      assert {:ok, %Plan{} = plan} = Budget.update_plan(plan, update_attrs)
+      assert plan.name == "some updated name"
+    end
+
+    test "update_plan/2 with invalid data returns error changeset" do
+      plan = plan_fixture()
+      assert {:error, %Ecto.Changeset{}} = Budget.update_plan(plan, @invalid_attrs)
+      assert plan == Budget.get_plan!(plan.id)
+    end
+
+    test "delete_plan/1 deletes the plan" do
+      plan = plan_fixture()
+      assert {:ok, %Plan{}} = Budget.delete_plan(plan)
+      assert_raise Ecto.NoResultsError, fn -> Budget.get_plan!(plan.id) end
+    end
+
+    test "change_plan/1 returns a plan changeset" do
+      plan = plan_fixture()
+      assert %Ecto.Changeset{} = Budget.change_plan(plan)
+    end
+  end
 end

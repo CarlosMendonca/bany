@@ -28,6 +28,11 @@ defmodule BanyWeb.Router do
     live "/transactions/new", TransactionLive.Form, :new
     live "/transactions/:id", TransactionLive.Show, :show
     live "/transactions/:id/edit", TransactionLive.Form, :edit
+
+    live "/plans", PlanLive.Index, :index
+    live "/plans/new", PlanLive.Form, :new
+    live "/plans/:id", PlanLive.Show, :show
+    live "/plans/:id/edit", PlanLive.Form, :edit
   end
 
   # Other scopes may use custom stacks.

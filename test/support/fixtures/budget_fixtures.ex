@@ -17,4 +17,18 @@ defmodule Bany.BudgetFixtures do
 
     category
   end
+
+  @doc """
+  Generate a plan.
+  """
+  def plan_fixture(attrs \\ %{}) do
+    {:ok, plan} =
+      attrs
+      |> Enum.into(%{
+        name: "some name"
+      })
+      |> Bany.Budget.create_plan()
+
+    plan
+  end
 end
