@@ -3,6 +3,7 @@ defmodule BanyWeb.TransactionLive.Form do
 
   alias Bany.Ledger
   alias Bany.Ledger.Transaction
+  alias Bany.Budget
 
   @impl true
   def render(assigns) do
@@ -14,10 +15,10 @@ defmodule BanyWeb.TransactionLive.Form do
       </.header>
 
       <.form for={@form} id="transaction-form" phx-change="validate" phx-submit="save">
-        <.input field={@form[:transaction]} type="text" label="Transaction" />
         <.input field={@form[:memo]} type="text" label="Memo" />
         <.input field={@form[:date]} type="date" label="Date" />
         <.input field={@form[:amount]} type="number" label="Amount" step="any" />
+        <.input field={@form[:category_id]} type="select" label="Category" options={@categories} />
         <footer>
           <.button phx-disable-with="Saving..." variant="primary">Save Transaction</.button>
           <.button navigate={return_path(@return_to, @transaction)}>Cancel</.button>
@@ -32,6 +33,7 @@ defmodule BanyWeb.TransactionLive.Form do
     {:ok,
      socket
      |> assign(:return_to, return_to(params["return_to"]))
+     |> assign(:categories, Budget.list_categories() |> Enum.map(&({&1.name, &1.id})))
      |> apply_action(socket.assigns.live_action, params)}
   end
 

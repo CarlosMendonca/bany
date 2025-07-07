@@ -7,8 +7,9 @@ defmodule Bany.LedgerTest do
     alias Bany.Ledger.Transaction
 
     import Bany.LedgerFixtures
+    import Bany.BudgetFixtures
 
-    @invalid_attrs %{date: nil, transaction: nil, memo: nil, amount: nil}
+    @invalid_attrs %{date: nil, memo: nil, amount: nil}
 
     test "list_transactions/0 returns all transactions" do
       transaction = transaction_fixture()
@@ -21,13 +22,14 @@ defmodule Bany.LedgerTest do
     end
 
     test "create_transaction/1 with valid data creates a transaction" do
-      valid_attrs = %{date: ~D[2025-07-06], transaction: "some transaction", memo: "some memo", amount: "120.5"}
+      category = category_fixture()
+      valid_attrs = %{date: ~D[2025-07-06], memo: "some memo", amount: "120.5", category_id: category.id}
 
       assert {:ok, %Transaction{} = transaction} = Ledger.create_transaction(valid_attrs)
       assert transaction.date == ~D[2025-07-06]
-      assert transaction.transaction == "some transaction"
       assert transaction.memo == "some memo"
       assert transaction.amount == Decimal.new("120.5")
+      assert transaction.category_id == category.id
     end
 
     test "create_transaction/1 with invalid data returns error changeset" do
@@ -36,11 +38,10 @@ defmodule Bany.LedgerTest do
 
     test "update_transaction/2 with valid data updates the transaction" do
       transaction = transaction_fixture()
-      update_attrs = %{date: ~D[2025-07-07], transaction: "some updated transaction", memo: "some updated memo", amount: "456.7"}
+      update_attrs = %{date: ~D[2025-07-07], memo: "some updated memo", amount: "456.7"}
 
       assert {:ok, %Transaction{} = transaction} = Ledger.update_transaction(transaction, update_attrs)
       assert transaction.date == ~D[2025-07-07]
-      assert transaction.transaction == "some updated transaction"
       assert transaction.memo == "some updated memo"
       assert transaction.amount == Decimal.new("456.7")
     end

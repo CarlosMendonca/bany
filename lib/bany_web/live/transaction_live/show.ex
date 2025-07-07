@@ -2,6 +2,7 @@ defmodule BanyWeb.TransactionLive.Show do
   use BanyWeb, :live_view
 
   alias Bany.Ledger
+  alias Bany.Repo
 
   @impl true
   def render(assigns) do
@@ -21,10 +22,14 @@ defmodule BanyWeb.TransactionLive.Show do
       </.header>
 
       <.list>
-        <:item title="Transaction">{@transaction.transaction}</:item>
         <:item title="Memo">{@transaction.memo}</:item>
         <:item title="Date">{@transaction.date}</:item>
         <:item title="Amount">{@transaction.amount}</:item>
+        <:item title="Category">
+          <.link navigate={~p"/categories/#{@transaction.category}"}>
+            {@transaction.category.name}
+          </.link>
+        </:item>
       </.list>
     </Layouts.app>
     """
@@ -35,6 +40,6 @@ defmodule BanyWeb.TransactionLive.Show do
     {:ok,
      socket
      |> assign(:page_title, "Show Transaction")
-     |> assign(:transaction, Ledger.get_transaction!(id))}
+     |> assign(:transaction, Ledger.get_transaction!(id) |> Repo.preload(:category))}
   end
 end

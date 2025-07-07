@@ -2,6 +2,7 @@ defmodule BanyWeb.TransactionLive.Index do
   use BanyWeb, :live_view
 
   alias Bany.Ledger
+  alias Bany.Repo
 
   @impl true
   def render(assigns) do
@@ -21,10 +22,14 @@ defmodule BanyWeb.TransactionLive.Index do
         rows={@streams.transactions}
         row_click={fn {_id, transaction} -> JS.navigate(~p"/transactions/#{transaction}") end}
       >
-        <:col :let={{_id, transaction}} label="Transaction">{transaction.transaction}</:col>
         <:col :let={{_id, transaction}} label="Memo">{transaction.memo}</:col>
         <:col :let={{_id, transaction}} label="Date">{transaction.date}</:col>
         <:col :let={{_id, transaction}} label="Amount">{transaction.amount}</:col>
+        <:col :let={{_id, transaction}} label="Category">
+          <.link navigate={~p"/categories/#{transaction.category}"}>
+            {transaction.category.name}
+          </.link>
+        </:col>
         <:action :let={{_id, transaction}}>
           <div class="sr-only">
             <.link navigate={~p"/transactions/#{transaction}"}>Show</.link>
@@ -49,7 +54,7 @@ defmodule BanyWeb.TransactionLive.Index do
     {:ok,
      socket
      |> assign(:page_title, "Listing Transactions")
-     |> stream(:transactions, Ledger.list_transactions())}
+     |> stream(:transactions, Ledger.list_transactions() |> Repo.preload(:category))}
   end
 
   @impl true

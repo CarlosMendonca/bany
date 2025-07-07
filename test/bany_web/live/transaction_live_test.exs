@@ -4,9 +4,9 @@ defmodule BanyWeb.TransactionLiveTest do
   import Phoenix.LiveViewTest
   import Bany.LedgerFixtures
 
-  @create_attrs %{date: "2025-07-06", transaction: "some transaction", memo: "some memo", amount: "120.5"}
-  @update_attrs %{date: "2025-07-07", transaction: "some updated transaction", memo: "some updated memo", amount: "456.7"}
-  @invalid_attrs %{date: nil, transaction: nil, memo: nil, amount: nil}
+  @create_attrs %{date: "2025-07-06", memo: "some memo", amount: "120.5"}
+  @update_attrs %{date: "2025-07-07", memo: "some updated memo", amount: "456.7"}
+  @invalid_attrs %{date: nil, memo: nil, amount: nil}
   defp create_transaction(_) do
     transaction = transaction_fixture()
 
@@ -16,11 +16,10 @@ defmodule BanyWeb.TransactionLiveTest do
   describe "Index" do
     setup [:create_transaction]
 
-    test "lists all transactions", %{conn: conn, transaction: transaction} do
+    test "lists all transactions", %{conn: conn} do
       {:ok, _index_live, html} = live(conn, ~p"/transactions")
 
       assert html =~ "Listing Transactions"
-      assert html =~ transaction.transaction
     end
 
     test "saves new transaction", %{conn: conn} do
@@ -46,7 +45,6 @@ defmodule BanyWeb.TransactionLiveTest do
 
       html = render(index_live)
       assert html =~ "Transaction created successfully"
-      assert html =~ "some transaction"
     end
 
     test "updates transaction in listing", %{conn: conn, transaction: transaction} do
@@ -72,7 +70,6 @@ defmodule BanyWeb.TransactionLiveTest do
 
       html = render(index_live)
       assert html =~ "Transaction updated successfully"
-      assert html =~ "some updated transaction"
     end
 
     test "deletes transaction in listing", %{conn: conn, transaction: transaction} do
@@ -90,7 +87,6 @@ defmodule BanyWeb.TransactionLiveTest do
       {:ok, _show_live, html} = live(conn, ~p"/transactions/#{transaction}")
 
       assert html =~ "Show Transaction"
-      assert html =~ transaction.transaction
     end
 
     test "updates transaction and returns to show", %{conn: conn, transaction: transaction} do
@@ -116,7 +112,6 @@ defmodule BanyWeb.TransactionLiveTest do
 
       html = render(show_live)
       assert html =~ "Transaction updated successfully"
-      assert html =~ "some updated transaction"
     end
   end
 end
