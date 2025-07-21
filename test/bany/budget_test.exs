@@ -110,4 +110,58 @@ defmodule Bany.BudgetTest do
       assert %Ecto.Changeset{} = Budget.change_plan(plan)
     end
   end
+
+  describe "category_groups" do
+    alias Bany.Budget.CategoryGroup
+
+    import Bany.BudgetFixtures
+
+    @invalid_attrs %{name: nil}
+
+    test "list_category_groups/0 returns all category_groups" do
+      category_group = category_group_fixture()
+      assert Budget.list_category_groups() == [category_group]
+    end
+
+    test "get_category_group!/1 returns the category_group with given id" do
+      category_group = category_group_fixture()
+      assert Budget.get_category_group!(category_group.id) == category_group
+    end
+
+    test "create_category_group/1 with valid data creates a category_group" do
+      valid_attrs = %{name: "some name"}
+
+      assert {:ok, %CategoryGroup{} = category_group} = Budget.create_category_group(valid_attrs)
+      assert category_group.name == "some name"
+    end
+
+    test "create_category_group/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Budget.create_category_group(@invalid_attrs)
+    end
+
+    test "update_category_group/2 with valid data updates the category_group" do
+      category_group = category_group_fixture()
+      update_attrs = %{name: "some updated name"}
+
+      assert {:ok, %CategoryGroup{} = category_group} = Budget.update_category_group(category_group, update_attrs)
+      assert category_group.name == "some updated name"
+    end
+
+    test "update_category_group/2 with invalid data returns error changeset" do
+      category_group = category_group_fixture()
+      assert {:error, %Ecto.Changeset{}} = Budget.update_category_group(category_group, @invalid_attrs)
+      assert category_group == Budget.get_category_group!(category_group.id)
+    end
+
+    test "delete_category_group/1 deletes the category_group" do
+      category_group = category_group_fixture()
+      assert {:ok, %CategoryGroup{}} = Budget.delete_category_group(category_group)
+      assert_raise Ecto.NoResultsError, fn -> Budget.get_category_group!(category_group.id) end
+    end
+
+    test "change_category_group/1 returns a category_group changeset" do
+      category_group = category_group_fixture()
+      assert %Ecto.Changeset{} = Budget.change_category_group(category_group)
+    end
+  end
 end

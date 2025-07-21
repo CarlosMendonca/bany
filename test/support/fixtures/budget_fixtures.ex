@@ -31,4 +31,18 @@ defmodule Bany.BudgetFixtures do
 
     plan
   end
+
+  @doc """
+  Generate a category_group.
+  """
+  def category_group_fixture(attrs \\ %{}) do
+    {:ok, category_group} =
+      attrs
+      |> Enum.into(%{
+        name: "some name"
+      })
+      |> Bany.Budget.create_category_group()
+
+    category_group
+  end
 end

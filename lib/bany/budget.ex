@@ -197,4 +197,104 @@ defmodule Bany.Budget do
   def change_plan(%Plan{} = plan, attrs \\ %{}) do
     Plan.changeset(plan, attrs)
   end
+
+  alias Bany.Budget.CategoryGroup
+
+  @doc """
+  Returns the list of category_groups.
+
+  ## Examples
+
+      iex> list_category_groups()
+      [%CategoryGroup{}, ...]
+
+  """
+  def list_category_groups do
+    Repo.all(CategoryGroup)
+  end
+
+  @doc """
+  Gets a single category_group.
+
+  Raises `Ecto.NoResultsError` if the Category group does not exist.
+
+  ## Examples
+
+      iex> get_category_group!(123)
+      %CategoryGroup{}
+
+      iex> get_category_group!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_category_group!(id), do: Repo.get!(CategoryGroup, id)
+
+  @doc """
+  Creates a category_group.
+
+  ## Examples
+
+      iex> create_category_group(%{field: value})
+      {:ok, %CategoryGroup{}}
+
+      iex> create_category_group(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_category_group(attrs) do
+    categories = Map.get(attrs, "category_ids", []) |> Enum.map(&get_category!/1)
+    %CategoryGroup{}
+    |> CategoryGroup.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:categories, categories)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a category_group.
+
+  ## Examples
+
+      iex> update_category_group(category_group, %{field: new_value})
+      {:ok, %CategoryGroup{}}
+
+      iex> update_category_group(category_group, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_category_group(%CategoryGroup{} = category_group, attrs) do
+    categories = Map.get(attrs, "category_ids", []) |> Enum.map(&get_category!/1)
+    category_group
+    |> CategoryGroup.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:categories, categories)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a category_group.
+
+  ## Examples
+
+      iex> delete_category_group(category_group)
+      {:ok, %CategoryGroup{}}
+
+      iex> delete_category_group(category_group)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_category_group(%CategoryGroup{} = category_group) do
+    Repo.delete(category_group)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking category_group changes.
+
+  ## Examples
+
+      iex> change_category_group(category_group)
+      %Ecto.Changeset{data: %CategoryGroup{}}
+
+  """
+  def change_category_group(%CategoryGroup{} = category_group, attrs \\ %{}) do
+    CategoryGroup.changeset(category_group, attrs)
+  end
 end
