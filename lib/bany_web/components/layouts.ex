@@ -47,6 +47,9 @@ defmodule BanyWeb.Layouts do
             <a href={~p"/categories"} class="btn btn-ghost">Categories</a>
           </li>
           <li>
+            <a href={~p"/category_groups"} class="btn btn-ghost">Category Groups</a>
+          </li>
+          <li>
             <a href={~p"/transactions"} class="btn btn-ghost">Transactions</a>
           </li>
           <li>
