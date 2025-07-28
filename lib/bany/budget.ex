@@ -263,6 +263,9 @@ defmodule Bany.Budget do
   """
   def update_category_group(%CategoryGroup{} = category_group, attrs) do
     categories = Map.get(attrs, "category_ids", []) |> Enum.map(&get_category!/1)
+    # TOOD: introduce a function to get multiple categories from a list of ids
+
+
     category_group
     |> CategoryGroup.changeset(attrs)
     |> Ecto.Changeset.put_assoc(:categories, categories)

@@ -37,20 +37,22 @@ defmodule BanyWeb.CategoryLive.Form do
 
   defp apply_action(socket, :edit, %{"id" => id}) do
     category = Budget.get_category!(id)
+    changeset = Budget.change_category(category)
 
     socket
     |> assign(:page_title, "Edit Category")
     |> assign(:category, category)
-    |> assign(:form, to_form(Budget.change_category(category)))
+    |> assign(:form, to_form(changeset))
   end
 
   defp apply_action(socket, :new, _params) do
     category = %Category{}
+    changeset = Budget.change_category(category)
 
     socket
     |> assign(:page_title, "New Category")
     |> assign(:category, category)
-    |> assign(:form, to_form(Budget.change_category(category)))
+    |> assign(:form, to_form(changeset))
   end
 
   @impl true
