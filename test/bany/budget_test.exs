@@ -164,4 +164,60 @@ defmodule Bany.BudgetTest do
       assert %Ecto.Changeset{} = Budget.change_category_group(category_group)
     end
   end
+
+  describe "allocations" do
+    alias Bany.Budget.Allocation
+
+    import Bany.BudgetFixtures
+
+    @invalid_attrs %{amount: nil, allocated_on: nil}
+
+    test "list_allocations/0 returns all allocations" do
+      allocation = allocation_fixture()
+      assert Budget.list_allocations() == [allocation]
+    end
+
+    test "get_allocation!/1 returns the allocation with given id" do
+      allocation = allocation_fixture()
+      assert Budget.get_allocation!(allocation.id) == allocation
+    end
+
+    test "create_allocation/1 with valid data creates a allocation" do
+      valid_attrs = %{amount: "120.5", allocated_on: ~D[2025-08-26]}
+
+      assert {:ok, %Allocation{} = allocation} = Budget.create_allocation(valid_attrs)
+      assert allocation.amount == Decimal.new("120.5")
+      assert allocation.allocated_on == ~D[2025-08-26]
+    end
+
+    test "create_allocation/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Budget.create_allocation(@invalid_attrs)
+    end
+
+    test "update_allocation/2 with valid data updates the allocation" do
+      allocation = allocation_fixture()
+      update_attrs = %{amount: "456.7", allocated_on: ~D[2025-08-27]}
+
+      assert {:ok, %Allocation{} = allocation} = Budget.update_allocation(allocation, update_attrs)
+      assert allocation.amount == Decimal.new("456.7")
+      assert allocation.allocated_on == ~D[2025-08-27]
+    end
+
+    test "update_allocation/2 with invalid data returns error changeset" do
+      allocation = allocation_fixture()
+      assert {:error, %Ecto.Changeset{}} = Budget.update_allocation(allocation, @invalid_attrs)
+      assert allocation == Budget.get_allocation!(allocation.id)
+    end
+
+    test "delete_allocation/1 deletes the allocation" do
+      allocation = allocation_fixture()
+      assert {:ok, %Allocation{}} = Budget.delete_allocation(allocation)
+      assert_raise Ecto.NoResultsError, fn -> Budget.get_allocation!(allocation.id) end
+    end
+
+    test "change_allocation/1 returns a allocation changeset" do
+      allocation = allocation_fixture()
+      assert %Ecto.Changeset{} = Budget.change_allocation(allocation)
+    end
+  end
 end

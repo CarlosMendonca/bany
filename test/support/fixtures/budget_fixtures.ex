@@ -45,4 +45,19 @@ defmodule Bany.BudgetFixtures do
 
     category_group
   end
+
+  @doc """
+  Generate a allocation.
+  """
+  def allocation_fixture(attrs \\ %{}) do
+    {:ok, allocation} =
+      attrs
+      |> Enum.into(%{
+        allocated_on: ~D[2025-08-26],
+        amount: "120.5"
+      })
+      |> Bany.Budget.create_allocation()
+
+    allocation
+  end
 end

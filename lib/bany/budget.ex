@@ -6,6 +6,7 @@ defmodule Bany.Budget do
   import Ecto.Query, warn: false
   alias Bany.Repo
 
+  alias Bany.Budget.Allocation
   alias Bany.Budget.Category
 
   @doc """
@@ -299,5 +300,99 @@ defmodule Bany.Budget do
   """
   def change_category_group(%CategoryGroup{} = category_group, attrs \\ %{}) do
     CategoryGroup.changeset(category_group, attrs)
+  end
+
+  @doc """
+  Returns the list of allocations.
+
+  ## Examples
+
+      iex> list_allocations()
+      [%Allocation{}, ...]
+
+  """
+  def list_allocations do
+    Repo.all(Allocation)
+  end
+
+  @doc """
+  Gets a single allocation.
+
+  Raises `Ecto.NoResultsError` if the Allocation does not exist.
+
+  ## Examples
+
+      iex> get_allocation!(123)
+      %Allocation{}
+
+      iex> get_allocation!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_allocation!(id), do: Repo.get!(Allocation, id)
+
+  @doc """
+  Creates a allocation.
+
+  ## Examples
+
+      iex> create_allocation(%{field: value})
+      {:ok, %Allocation{}}
+
+      iex> create_allocation(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_allocation(attrs) do
+    %Allocation{}
+    |> Allocation.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a allocation.
+
+  ## Examples
+
+      iex> update_allocation(allocation, %{field: new_value})
+      {:ok, %Allocation{}}
+
+      iex> update_allocation(allocation, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_allocation(%Allocation{} = allocation, attrs) do
+    allocation
+    |> Allocation.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a allocation.
+
+  ## Examples
+
+      iex> delete_allocation(allocation)
+      {:ok, %Allocation{}}
+
+      iex> delete_allocation(allocation)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_allocation(%Allocation{} = allocation) do
+    Repo.delete(allocation)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking allocation changes.
+
+  ## Examples
+
+      iex> change_allocation(allocation)
+      %Ecto.Changeset{data: %Allocation{}}
+
+  """
+  def change_allocation(%Allocation{} = allocation, attrs \\ %{}) do
+    Allocation.changeset(allocation, attrs)
   end
 end
