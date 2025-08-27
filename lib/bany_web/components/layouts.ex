@@ -47,6 +47,11 @@ defmodule BanyWeb.Layouts do
             <a href={~p"/categories"} class="btn btn-ghost">Categories</a>
           </li>
           <li>
+            <a href={~p"/categories/with_totals/#{Date.utc_today().year}/#{Date.utc_today().month}"} class="btn btn-ghost">
+              Categories with Totals
+            </a>
+          </li>
+          <li>
             <a href={~p"/category_groups"} class="btn btn-ghost">Category Groups</a>
           </li>
           <li>

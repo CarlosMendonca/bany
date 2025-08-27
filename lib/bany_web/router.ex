@@ -19,6 +19,7 @@ defmodule BanyWeb.Router do
 
     get "/", PageController, :home
 
+    live "/categories/with_totals/:year/:month", CategoryLive.IndexWithTotals, :index
     live "/categories", CategoryLive.Index, :index
     live "/categories/new", CategoryLive.Form, :new
     live "/categories/:id", CategoryLive.Show, :show

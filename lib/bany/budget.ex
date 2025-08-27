@@ -8,6 +8,7 @@ defmodule Bany.Budget do
 
   alias Bany.Budget.Allocation
   alias Bany.Budget.Category
+  alias Bany.Ledger.Transaction
 
   @doc """
   Returns the list of categories.
@@ -20,6 +21,53 @@ defmodule Bany.Budget do
   """
   def list_categories do
     Repo.all(Category)
+  end
+
+  def list_categories_with_totals(month, year) do
+    first_day = Date.new!(year, month, 1)
+    end_of_month = Date.end_of_month(first_day)
+
+    transactions_query =
+      from(
+        t in Transaction,
+        where: t.date >= ^first_day and t.date <= ^end_of_month,
+        group_by: t.category_id,
+        select: %{category_id: t.category_id, total_spent: sum(t.amount)}
+      )
+
+    categories_query =
+      from(
+        c in Category,
+        left_join: a in Allocation,
+        on: a.category_id == c.id and a.allocated_on == ^first_day,
+        left_join: t_sums in subquery(transactions_query),
+        on: t_sums.category_id == c.id,
+        preload: [:category_groups],
+        select: {c, a.amount, t_sums.total_spent}
+      )
+
+    results = Repo.all(categories_query)
+
+    results
+    |> Enum.map(fn {category, assigned, spent} ->
+      assigned = assigned || Decimal.new(0)
+      spent = spent || Decimal.new(0)
+      available = Decimal.sub(assigned, spent)
+
+      %{
+        category
+        | total_spent: spent,
+          total_assigned: assigned,
+          total_available: available
+      }
+    end)
+    |> Enum.group_by(fn category ->
+      case category.category_groups do
+        [] -> :ungrouped
+        [group | _] -> group
+      end
+    end)
+    |> Map.put_new(:ungrouped, [])
   end
 
   @doc """
