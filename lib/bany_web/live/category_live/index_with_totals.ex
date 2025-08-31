@@ -8,41 +8,50 @@ defmodule BanyWeb.CategoryLive.IndexWithTotals do
     ~H"""
     <Layouts.app flash={@flash}>
       <.header>
-        Categories with Totals for <%= Calendar.strftime(@selected_month, "%B %Y") %>
+        Plan for <%= Calendar.strftime(@selected_month, "%B %Y") %>
+        <:actions>
+          <.button navigate={~p"/categories/with_totals/#{@previous_month.year}/#{@previous_month.month}"}>
+            <.icon name="hero-chevron-left" />
+          </.button>
+          <.button variant="primary" navigate={~p"/categories/with_totals/#{@current_month.year}/#{@current_month.month}"}>
+            <.icon name="hero-calendar-days" /> Today
+          </.button>
+          <.button navigate={~p"/categories/with_totals/#{@next_month.year}/#{@next_month.month}"}>
+            <.icon name="hero-chevron-right" />
+          </.button>
+        </:actions>
       </.header>
-
-      <div class="flex justify-between items-center mb-4">
-        <.link navigate={~p"/categories/with_totals/#{@previous_month.year}/#{@previous_month.month}"}>
-          <.button>Previous Month</.button>
-        </.link>
-        <.link navigate={~p"/categories/with_totals/#{@current_month.year}/#{@current_month.month}"}>
-          <.button>Today</.button>
-        </.link>
-        <.link navigate={~p"/categories/with_totals/#{@next_month.year}/#{@next_month.month}"}>
-          <.button>Next Month</.button>
-        </.link>
-      </div>
-
-      <%= for {group, categories} <- @category_groups do %>
-        <div class="mb-8">
-          <h2 class="text-sm font-semibold mb-4">
-            <%= if group == :ungrouped do %>
-              Ungrouped Categories
-            <% else %>
-              <%= group.name %>
+      <table class="table table-zebra">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Assigned</th>
+            <th>Activity</th>
+            <th>Available</th>
+          </tr>
+        </thead>
+        <tbody>
+          <%= for {group, categories} <- @category_groups do %>
+            <tr>
+              <th colspan="4">
+                <%= if group == :ungrouped do %>
+                  Ungrouped Categories
+                <% else %>
+                  <%= group.name %>
+                <% end %>
+              </th>
+            </tr>
+            <%= for category <- categories do %>
+              <tr>
+                <td><%= category.name %></td>
+                <td><%= category.total_assigned %></td>
+                <td><%= category.total_spent %></td>
+                <td><%= category.total_available %></td>
+              </tr>
             <% end %>
-          </h2>
-          <.table
-            id={"categories-#{if group == :ungrouped, do: "ungrouped", else: group.id}"}
-            rows={categories}
-          >
-            <:col :let={category} label="Name"><%= category.name %></:col>
-            <:col :let={category} label="Assigned"><%= category.total_assigned %></:col>
-            <:col :let={category} label="Spent"><%= category.total_spent %></:col>
-            <:col :let={category} label="Available"><%= category.total_available %></:col>
-          </.table>
-        </div>
-      <% end %>
+          <% end %>
+        </tbody>
+      </table>
     </Layouts.app>
     """
   end
