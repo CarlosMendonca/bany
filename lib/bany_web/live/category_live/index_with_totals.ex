@@ -8,15 +8,18 @@ defmodule BanyWeb.CategoryLive.IndexWithTotals do
     ~H"""
     <Layouts.app flash={@flash}>
       <.header>
-        Plan for <%= Calendar.strftime(@selected_month, "%B %Y") %>
+        Plan for <%= Calendar.strftime(@dates.selected, "%B %Y") %>
         <:actions>
-          <.button navigate={~p"/categories/with_totals/#{@previous_month.year}/#{@previous_month.month}"}>
+          <.button navigate={~p"/categories/with_totals/#{@dates.previous.year}/#{@dates.previous.month}"}>
             <.icon name="hero-chevron-left" />
           </.button>
-          <.button variant="primary" navigate={~p"/categories/with_totals/#{@current_month.year}/#{@current_month.month}"}>
+          <.button
+            variant="primary"
+            navigate={~p"/categories/with_totals/#{@dates.current.year}/#{@dates.current.month}"}
+          >
             <.icon name="hero-calendar-days" /> Today
           </.button>
-          <.button navigate={~p"/categories/with_totals/#{@next_month.year}/#{@next_month.month}"}>
+          <.button navigate={~p"/categories/with_totals/#{@dates.next.year}/#{@dates.next.month}"}>
             <.icon name="hero-chevron-right" />
           </.button>
         </:actions>
@@ -58,20 +61,22 @@ defmodule BanyWeb.CategoryLive.IndexWithTotals do
 
   @impl true
   def mount(params, _session, socket) do
+    today = Date.utc_today()
     {year, month} = get_year_and_month(params)
-    selected_month = Date.new!(year, month, 1)
+    selected_date = Date.new!(year, month, 1)
 
-    previous_month = Date.shift(selected_month, day: -1)
-    next_month = Date.shift(selected_month, month: 1)
+    dates = %{
+      selected: selected_date,
+      current: today,
+      previous: Date.shift(selected_date, day: -1),
+      next: Date.shift(selected_date, month: 1)
+    }
 
     socket =
       socket
       |> assign(:page_title, "Listing Categories with Totals")
       |> assign(:category_groups, Budget.list_categories_with_totals(month, year))
-      |> assign(:selected_month, selected_month)
-      |> assign(:current_month, Date.utc_today())
-      |> assign(:previous_month, previous_month)
-      |> assign(:next_month, next_month)
+      |> assign(:dates, dates)
 
     {:ok, socket}
   end
