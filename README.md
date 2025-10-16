@@ -16,3 +16,13 @@ Ready to run in production? Please [check our deployment guides](https://hexdocs
 * Docs: https://hexdocs.pm/phoenix
 * Forum: https://elixirforum.com/c/phoenix-forum
 * Source: https://github.com/phoenixframework/phoenix
+
+## Instructions
+
+* Run `devenv shell` -- it will take a long time
+* Bring up the database with `devenv up`
+* Configure the `postgres` role to login with `psql` and `ALTER ROLE postgres WITH LOGIN;`
+* Verify with `\du postgres`
+* Get dependencies with `mix deps.get`
+* Create the database with `mix ecto.create` and install schemas with `mix ecto.migrate`
+* Run server with `mix phx.server` 
