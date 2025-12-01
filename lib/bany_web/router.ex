@@ -30,6 +30,11 @@ defmodule BanyWeb.Router do
     live "/transactions/:id", TransactionLive.Show, :show
     live "/transactions/:id/edit", TransactionLive.Form, :edit
 
+    live "/accounts", AccountLive.Index, :index
+    live "/accounts/new", AccountLive.Form, :new
+    live "/accounts/:id", AccountLive.Show, :show
+    live "/accounts/:id/edit", AccountLive.Form, :edit
+
     live "/plans", PlanLive.Index, :index
     live "/plans/new", PlanLive.Form, :new
     live "/plans/:id", PlanLive.Show, :show
