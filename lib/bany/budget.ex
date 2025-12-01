@@ -48,26 +48,53 @@ defmodule Bany.Budget do
 
     results = Repo.all(categories_query)
 
-    results
-    |> Enum.map(fn {category, assigned, spent} ->
-      assigned = assigned || Decimal.new(0)
-      spent = spent || Decimal.new(0)
-      available = Decimal.sub(assigned, spent)
+    categories_with_totals =
+      results
+      |> Enum.map(fn {category, assigned, spent} ->
+        assigned = assigned || Decimal.new(0)
+        spent = spent || Decimal.new(0)
+        available = Decimal.sub(assigned, spent)
 
-      %{
-        category
-        | total_spent: spent,
-          total_assigned: assigned,
-          total_available: available
+        %{
+          category
+          | total_spent: spent,
+            total_assigned: assigned,
+            total_available: available
+        }
+      end)
+      |> Enum.group_by(fn category ->
+        case category.category_groups do
+          [] -> :ungrouped
+          [group | _] -> group
+        end
+      end)
+      |> Map.put_new(:ungrouped, [])
+
+    # Calculate total and count for uncategorized transactions
+    {uncategorized_total, uncategorized_count} =
+      from(
+        t in Transaction,
+        where: t.date >= ^first_day and t.date <= ^end_of_month and is_nil(t.category_id),
+        select: {coalesce(sum(t.amount), 0), count(t.id)}
+      )
+      |> Repo.one()
+
+    # Add uncategorized transactions as a special entry
+    if uncategorized_count > 0 do
+      uncategorized_entry = %{
+        name: "Uncategorized Transactions (#{uncategorized_count})",
+        total_assigned: Decimal.new(0),
+        total_spent: uncategorized_total,
+        total_available: Decimal.negate(uncategorized_total)
       }
-    end)
-    |> Enum.group_by(fn category ->
-      case category.category_groups do
-        [] -> :ungrouped
-        [group | _] -> group
-      end
-    end)
-    |> Map.put_new(:ungrouped, [])
+      # TODO: YNAB doesn't show Assigned for Uncategorized Transactions and assumes Available equals to Activity; consider doing the same, which may leak decimal representation to the view
+
+      Map.update!(categories_with_totals, :ungrouped, fn ungrouped_categories ->
+        [uncategorized_entry | ungrouped_categories]
+      end)
+    else
+      categories_with_totals
+    end
   end
 
   @doc """
