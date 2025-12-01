@@ -16,6 +16,6 @@ defmodule Bany.Ledger.Transaction do
   def changeset(transaction, attrs) do
     transaction
     |> cast(attrs, [:memo, :date, :amount, :category_id, :account_id])
-    |> validate_required([:memo, :date, :amount, :category_id, :account_id])
+    |> validate_required([:memo, :date, :amount])
   end
 end

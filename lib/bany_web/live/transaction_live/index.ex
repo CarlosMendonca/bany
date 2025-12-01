@@ -26,9 +26,22 @@ defmodule BanyWeb.TransactionLive.Index do
         <:col :let={{_id, transaction}} label="Date">{transaction.date}</:col>
         <:col :let={{_id, transaction}} label="Amount">{transaction.amount}</:col>
         <:col :let={{_id, transaction}} label="Category">
-          <.link navigate={~p"/categories/#{transaction.category}"}>
-            {transaction.category.name}
-          </.link>
+          <%= if transaction.category do %>
+            <.link navigate={~p"/categories/#{transaction.category}"}>
+              {transaction.category.name}
+            </.link>
+          <% else %>
+            (none)
+          <% end %>
+        </:col>
+        <:col :let={{_id, transaction}} label="Account">
+          <%= if transaction.account do %>
+            <.link navigate={~p"/accounts/#{transaction.account}"}>
+              {transaction.account.name}
+            </.link>
+          <% else %>
+            (none)
+          <% end %>
         </:col>
         <:action :let={{_id, transaction}}>
           <div class="sr-only">
@@ -54,7 +67,7 @@ defmodule BanyWeb.TransactionLive.Index do
     {:ok,
      socket
      |> assign(:page_title, "Listing Transactions")
-     |> stream(:transactions, Ledger.list_transactions() |> Repo.preload(:category))}
+     |> stream(:transactions, Ledger.list_transactions() |> Repo.preload([:category, :account]))}
   end
 
   @impl true

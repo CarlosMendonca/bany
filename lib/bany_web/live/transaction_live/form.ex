@@ -18,7 +18,8 @@ defmodule BanyWeb.TransactionLive.Form do
         <.input field={@form[:memo]} type="text" label="Memo" />
         <.input field={@form[:date]} type="date" label="Date" />
         <.input field={@form[:amount]} type="number" label="Amount" step="any" />
-        <.input field={@form[:category_id]} type="select" label="Category" options={@categories} />
+        <.input field={@form[:category_id]} type="select" label="Category" prompt="(none)" options={@categories} />
+        <.input field={@form[:account_id]} type="select" label="Account" prompt="(none)" options={@accounts} />
         <footer>
           <.button phx-disable-with="Saving..." variant="primary">Save Transaction</.button>
           <.button navigate={return_path(@return_to, @transaction)}>Cancel</.button>
@@ -34,6 +35,7 @@ defmodule BanyWeb.TransactionLive.Form do
      socket
      |> assign(:return_to, return_to(params["return_to"]))
      |> assign(:categories, Budget.list_categories() |> Enum.map(&({&1.name, &1.id})))
+     |> assign(:accounts, Ledger.list_accounts() |> Enum.map(&({&1.name, &1.id})))
      |> apply_action(socket.assigns.live_action, params)}
   end
 

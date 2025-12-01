@@ -26,9 +26,22 @@ defmodule BanyWeb.TransactionLive.Show do
         <:item title="Date">{@transaction.date}</:item>
         <:item title="Amount">{@transaction.amount}</:item>
         <:item title="Category">
-          <.link navigate={~p"/categories/#{@transaction.category}"}>
-            {@transaction.category.name}
-          </.link>
+          <%= if @transaction.category do %>
+            <.link navigate={~p"/categories/#{@transaction.category}"}>
+              {@transaction.category.name}
+            </.link>
+          <% else %>
+            (none)
+          <% end %>
+        </:item>
+        <:item title="Account">
+          <%= if @transaction.account do %>
+            <.link navigate={~p"/accounts/#{@transaction.account}"}>
+              {@transaction.account.name}
+            </.link>
+          <% else %>
+            (none)
+          <% end %>
         </:item>
       </.list>
     </Layouts.app>
@@ -40,6 +53,6 @@ defmodule BanyWeb.TransactionLive.Show do
     {:ok,
      socket
      |> assign(:page_title, "Show Transaction")
-     |> assign(:transaction, Ledger.get_transaction!(id) |> Repo.preload(:category))}
+     |> assign(:transaction, Ledger.get_transaction!(id) |> Repo.preload([:category, :account]))}
   end
 end
