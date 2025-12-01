@@ -15,7 +15,7 @@
   languages.elixir.enable = true;
 
   # https://devenv.sh/processes/
-  # processes.cargo-watch.exec = "cargo-watch";
+  processes.phoenix.exec = "mix phx.server";
 
   # https://devenv.sh/services/
   services.postgres = {
