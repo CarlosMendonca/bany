@@ -6,6 +6,7 @@ defmodule Bany.Ledger.Transaction do
     field :memo, :string
     field :date, :date
     field :amount, :decimal
+    field :payee, :string
     belongs_to :category, Bany.Budget.Category
     belongs_to :account, Bany.Ledger.Account
 
@@ -15,7 +16,7 @@ defmodule Bany.Ledger.Transaction do
   @doc false
   def changeset(transaction, attrs) do
     transaction
-    |> cast(attrs, [:memo, :date, :amount, :category_id, :account_id])
-    |> validate_required([:memo, :date, :amount])
+    |> cast(attrs, [:memo, :date, :amount, :payee, :category_id, :account_id])
+    |> validate_required([:date, :amount])
   end
 end

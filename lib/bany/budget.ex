@@ -483,4 +483,11 @@ defmodule Bany.Budget do
   def change_allocation(%Allocation{} = allocation, attrs \\ %{}) do
     Allocation.changeset(allocation, attrs)
   end
+
+  def delete_all do
+    Repo.delete_all(Allocation)
+    Repo.delete_all(Category)
+    Repo.delete_all(CategoryGroup)
+    Repo.delete_all(Plan)
+  end
 end

@@ -49,6 +49,8 @@ defmodule BanyWeb.Router do
     live "/allocations/new", AllocationLive.Form, :new
     live "/allocations/:id", AllocationLive.Show, :show
     live "/allocations/:id/edit", AllocationLive.Form, :edit
+
+    live "/admin", AdminLive, :admin
   end
 
   # Other scopes may use custom stacks.

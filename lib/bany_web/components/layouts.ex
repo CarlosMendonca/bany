@@ -64,6 +64,9 @@ defmodule BanyWeb.Layouts do
             <a href={~p"/allocations"} class="btn btn-ghost">Allocations</a>
           </li>
           <li>
+            <a href={~p"/admin"} class="btn btn-ghost">Admin</a>
+          </li>
+          <li>
             <.theme_toggle />
           </li>
         </ul>

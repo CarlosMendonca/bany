@@ -196,4 +196,9 @@ defmodule Bany.Ledger do
   def change_account(%Account{} = account, attrs \\ %{}) do
     Account.changeset(account, attrs)
   end
+
+  def delete_all do
+    Repo.delete_all(Transaction)
+    Repo.delete_all(Account)
+  end
 end
