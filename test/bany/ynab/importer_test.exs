@@ -9,10 +9,22 @@ defmodule Bany.YNAB.ImporterTest do
   @plan_name "Test Budget"
 
   describe "import_csv/2" do
-    test "imports all transactions from the fixture file" do
-      assert {:ok, count} = Importer.import_csv(@fixture_path, @plan_name)
-      assert count == Repo.aggregate(Transaction, :count)
-      assert count > 0
+    test "returns a report with total_rows, transactions, accounts, category_groups, categories" do
+      assert {:ok, report} = Importer.import_csv(@fixture_path, @plan_name)
+      assert report.total_rows > 0
+      assert report.transactions.imported > 0
+      assert report.transactions.failed == []
+      assert report.accounts.created > 0
+      assert report.accounts.failed == 0
+      assert report.category_groups.created > 0
+      assert report.category_groups.failed == 0
+      assert report.categories.created > 0
+      assert report.categories.failed == 0
+    end
+
+    test "imported transaction count matches the DB" do
+      {:ok, report} = Importer.import_csv(@fixture_path, @plan_name)
+      assert report.transactions.imported == Repo.aggregate(Transaction, :count)
     end
 
     test "creates a plan with the given name" do
@@ -43,16 +55,13 @@ defmodule Bany.YNAB.ImporterTest do
     end
 
     test "running import twice does not create duplicate plans or accounts" do
-      Importer.import_csv(@fixture_path, @plan_name)
-      {:ok, _} = Importer.import_csv(@fixture_path, @plan_name)
+      {:ok, _first} = Importer.import_csv(@fixture_path, @plan_name)
+      {:ok, second} = Importer.import_csv(@fixture_path, @plan_name)
 
       assert Repo.aggregate(Bany.Budget.Plan, :count) == 1
-      accounts_after_second = Ledger.list_accounts()
-
-      Importer.import_csv(@fixture_path, @plan_name)
-      accounts_after_third = Ledger.list_accounts()
-
-      assert length(accounts_after_second) == length(accounts_after_third)
+      assert second.accounts.created == 0
+      assert second.category_groups.created == 0
+      assert second.categories.created == 0
     end
   end
 end

@@ -4,6 +4,9 @@ defmodule Bany.YNAB.Importer do
 
   The CSV represents a single YNAB budget, which maps to a Plan in Bany.
   Accounts, CategoryGroups, and Categories are created as needed.
+
+  Each row is processed independently — failures do not stop the import.
+  Returns a detailed report of what was created and what failed.
   """
 
   NimbleCSV.define(Bany.YNAB.CSVParser, separator: ",", escape: "\"")
@@ -18,9 +21,18 @@ defmodule Bany.YNAB.Importer do
 
   Creates or finds a Plan with the given name, then for each row
   finds-or-creates the Account, CategoryGroup, and Category before
-  inserting the Transaction.
+  inserting the Transaction. Each row is processed independently so
+  failures do not stop the import.
 
-  Returns `{:ok, count}` on success or `{:error, reason}` on failure.
+  Returns `{:ok, report}` where report contains per-entity counts:
+
+      %{
+        total_rows: 1115,
+        transactions:    %{imported: 1113, failed: [{45, "reason"}, ...]},
+        accounts:        %{created: 3,    failed: 0},
+        category_groups: %{created: 6,    failed: 0},
+        categories:      %{created: 18,   failed: 0}
+      }
   """
   def import_csv(file_path, plan_name) do
     plan = find_or_create_plan(plan_name)
@@ -31,126 +43,179 @@ defmodule Bany.YNAB.Importer do
       |> Bany.YNAB.CSVParser.parse_stream(skip_headers: true)
       |> Enum.to_list()
 
-    result =
-      Repo.transaction(fn ->
-        {count, _cache} =
-          Enum.reduce(rows, {0, empty_cache()}, fn row, {count, cache} ->
-            [account_name, _flag, date_str, payee, _combined, group_name, category_name, memo,
-             outflow_str, inflow_str, _cleared] = row
+    {stats, _cache} =
+      rows
+      |> Enum.with_index(1)
+      |> Enum.reduce({initial_stats(length(rows)), empty_cache()}, fn {row, row_num},
+                                                                       {stats, cache} ->
+        case import_row(row, plan, cache, stats) do
+          {:ok, new_cache, new_stats} ->
+            {new_stats, new_cache}
 
-            {account, cache} = find_or_create_account(account_name, cache)
-            {group, cache} = find_or_create_category_group(group_name, plan, cache)
-            {category, cache} = find_or_create_category(category_name, group, cache)
-
-            {:ok, _} =
-              Repo.insert(%Transaction{
-                date: parse_date(date_str),
-                payee: payee,
-                memo: memo,
-                amount: parse_amount(inflow_str, outflow_str),
-                account_id: account.id,
-                category_id: category.id
-              })
-
-            {count + 1, cache}
-          end)
-
-        count
+          {:error, reason, cache, stats} ->
+            stats = update_in(stats.transactions.failed, &[{row_num, reason} | &1])
+            {stats, cache}
+        end
       end)
 
-    case result do
-      {:ok, count} -> {:ok, count}
-      {:error, reason} -> {:error, reason}
-    end
+    stats = update_in(stats.transactions.failed, &Enum.reverse/1)
+    {:ok, stats}
+  end
+
+  defp initial_stats(total_rows) do
+    %{
+      total_rows: total_rows,
+      transactions: %{imported: 0, failed: []},
+      accounts: %{created: 0, failed: 0},
+      category_groups: %{created: 0, failed: 0},
+      categories: %{created: 0, failed: 0}
+    }
   end
 
   defp empty_cache, do: %{accounts: %{}, groups: %{}, categories: %{}}
 
+  defp import_row(row, plan, cache, stats) do
+    try do
+      [account_name, _flag, date_str, payee, _combined, group_name, category_name, memo,
+       outflow_str, inflow_str, _cleared] = row
+
+      with {:ok, account, cache, stats} <- find_or_create_account(account_name, cache, stats),
+           {:ok, category_id, cache, stats} <-
+             resolve_category(group_name, category_name, plan, cache, stats) do
+        case Repo.insert(%Transaction{
+               date: parse_date(date_str),
+               payee: payee,
+               memo: memo,
+               amount: parse_amount(inflow_str, outflow_str),
+               account_id: account.id,
+               category_id: category_id
+             }) do
+          {:ok, _} ->
+            {:ok, cache, update_in(stats.transactions.imported, &(&1 + 1))}
+
+          {:error, changeset} ->
+            {:error, format_changeset_errors(changeset), cache, stats}
+        end
+      end
+    rescue
+      e -> {:error, Exception.message(e), cache, stats}
+    end
+  end
+
+  defp resolve_category("", _category_name, _plan, cache, stats), do: {:ok, nil, cache, stats}
+  defp resolve_category(_group_name, "", _plan, cache, stats), do: {:ok, nil, cache, stats}
+
+  defp resolve_category(group_name, category_name, plan, cache, stats) do
+    with {:ok, group, cache, stats} <- find_or_create_category_group(group_name, plan, cache, stats),
+         {:ok, category, cache, stats} <- find_or_create_category(category_name, group, cache, stats) do
+      {:ok, category.id, cache, stats}
+    end
+  end
+
   defp find_or_create_plan(name) do
     case Repo.get_by(Plan, name: name) do
       nil ->
-        {:ok, plan} = Repo.insert(%Plan{name: name})
-        plan
+        case Repo.insert(Plan.changeset(%Plan{}, %{name: name})) do
+          {:ok, plan} -> plan
+          {:error, changeset} -> raise "failed to create plan: #{format_changeset_errors(changeset)}"
+        end
 
       plan ->
         plan
     end
   end
 
-  defp find_or_create_account(name, cache) do
+  defp find_or_create_account(name, cache, stats) do
     case Map.get(cache.accounts, name) do
       nil ->
-        account =
-          case Repo.get_by(Account, name: name) do
-            nil ->
-              {:ok, acc} = Repo.insert(%Account{name: name})
-              acc
+        case Repo.get_by(Account, name: name) do
+          nil ->
+            case Repo.insert(Account.changeset(%Account{}, %{name: name})) do
+              {:ok, acc} ->
+                cache = put_in(cache, [:accounts, name], acc)
+                stats = update_in(stats.accounts.created, &(&1 + 1))
+                {:ok, acc, cache, stats}
 
-            acc ->
-              acc
-          end
+              {:error, _changeset} ->
+                stats = update_in(stats.accounts.failed, &(&1 + 1))
+                {:error, "failed to create account \"#{name}\"", cache, stats}
+            end
 
-        {account, put_in(cache, [:accounts, name], account)}
+          acc ->
+            {:ok, acc, put_in(cache, [:accounts, name], acc), stats}
+        end
 
       account ->
-        {account, cache}
+        {:ok, account, cache, stats}
     end
   end
 
-  defp find_or_create_category_group(name, plan, cache) do
+  defp find_or_create_category_group(name, plan, cache, stats) do
     cache_key = {name, plan.id}
 
     case Map.get(cache.groups, cache_key) do
       nil ->
-        group =
-          case Repo.get_by(CategoryGroup, name: name, plan_id: plan.id) do
-            nil ->
-              {:ok, g} = Repo.insert(%CategoryGroup{name: name, plan_id: plan.id})
-              g
+        case Repo.get_by(CategoryGroup, name: name, plan_id: plan.id) do
+          nil ->
+            case Repo.insert(CategoryGroup.changeset(%CategoryGroup{}, %{name: name, plan_id: plan.id})) do
+              {:ok, group} ->
+                cache = put_in(cache, [:groups, cache_key], group)
+                stats = update_in(stats.category_groups.created, &(&1 + 1))
+                {:ok, group, cache, stats}
 
-            g ->
-              g
-          end
+              {:error, _changeset} ->
+                stats = update_in(stats.category_groups.failed, &(&1 + 1))
+                {:error, "failed to create category group \"#{name}\"", cache, stats}
+            end
 
-        {group, put_in(cache, [:groups, cache_key], group)}
+          group ->
+            {:ok, group, put_in(cache, [:groups, cache_key], group), stats}
+        end
 
       group ->
-        {group, cache}
+        {:ok, group, cache, stats}
     end
   end
 
-  defp find_or_create_category(name, group, cache) do
+  defp find_or_create_category(name, group, cache, stats) do
     cache_key = {name, group.id}
 
     case Map.get(cache.categories, cache_key) do
       nil ->
-        category =
-          case Repo.one(
-                 from c in Category,
-                   join: cgc in "category_groups_categories",
-                   on: cgc.category_id == c.id,
-                   where: c.name == ^name and cgc.category_group_id == ^group.id,
-                   limit: 1
-               ) do
-            nil ->
-              {:ok, cat} = Repo.insert(%Category{name: name})
+        existing =
+          Repo.one(
+            from c in Category,
+              join: cgc in "category_groups_categories",
+              on: cgc.category_id == c.id,
+              where: c.name == ^name and cgc.category_group_id == ^group.id,
+              limit: 1
+          )
 
-              Repo.insert_all(
-                "category_groups_categories",
-                [%{category_group_id: group.id, category_id: cat.id}],
-                on_conflict: :nothing
-              )
+        case existing do
+          nil ->
+            case Repo.insert(Category.changeset(%Category{}, %{name: name})) do
+              {:ok, cat} ->
+                Repo.insert_all(
+                  "category_groups_categories",
+                  [%{category_group_id: group.id, category_id: cat.id}],
+                  on_conflict: :nothing
+                )
 
-              cat
+                cache = put_in(cache, [:categories, cache_key], cat)
+                stats = update_in(stats.categories.created, &(&1 + 1))
+                {:ok, cat, cache, stats}
 
-            cat ->
-              cat
-          end
+              {:error, _changeset} ->
+                stats = update_in(stats.categories.failed, &(&1 + 1))
+                {:error, "failed to create category \"#{name}\"", cache, stats}
+            end
 
-        {category, put_in(cache, [:categories, cache_key], category)}
+          cat ->
+            {:ok, cat, put_in(cache, [:categories, cache_key], cat), stats}
+        end
 
       category ->
-        {category, cache}
+        {:ok, category, cache, stats}
     end
   end
 
@@ -175,5 +240,14 @@ defmodule Bany.YNAB.Importer do
     |> String.replace("$", "")
     |> String.replace(",", "")
     |> Decimal.new()
+  end
+
+  defp format_changeset_errors(changeset) do
+    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
+      Regex.replace(~r/%{(\w+)}/, msg, fn _, key ->
+        opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
+      end)
+    end)
+    |> Enum.map_join(", ", fn {field, errors} -> "#{field}: #{Enum.join(errors, ", ")}" end)
   end
 end
