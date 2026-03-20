@@ -7,11 +7,11 @@ defmodule BanyWeb.TransactionLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         Listing Transactions
         <:actions>
-          <.button variant="primary" navigate={~p"/transactions/new"}>
+          <.button variant="primary" navigate={transactions_new_path(@current_plan)}>
             <.icon name="hero-plus" /> New Transaction
           </.button>
         </:actions>
@@ -20,14 +20,14 @@ defmodule BanyWeb.TransactionLive.Index do
       <.table
         id="transactions"
         rows={@streams.transactions}
-        row_click={fn {_id, transaction} -> JS.navigate(~p"/transactions/#{transaction}") end}
+        row_click={fn {_id, transaction} -> JS.navigate(transaction_path(@current_plan, transaction)) end}
       >
         <:col :let={{_id, transaction}} label="Memo">{transaction.memo}</:col>
         <:col :let={{_id, transaction}} label="Date">{transaction.date}</:col>
         <:col :let={{_id, transaction}} label="Amount">{transaction.amount}</:col>
         <:col :let={{_id, transaction}} label="Category">
           <%= if transaction.category do %>
-            <.link navigate={~p"/categories/#{transaction.category}"}>
+            <.link navigate={if @current_plan, do: ~p"/plans/#{@current_plan}/categories/#{transaction.category}", else: ~p"/categories/#{transaction.category}"}>
               {transaction.category.name}
             </.link>
           <% else %>
@@ -36,7 +36,7 @@ defmodule BanyWeb.TransactionLive.Index do
         </:col>
         <:col :let={{_id, transaction}} label="Account">
           <%= if transaction.account do %>
-            <.link navigate={~p"/accounts/#{transaction.account}"}>
+            <.link navigate={if @current_plan, do: ~p"/plans/#{@current_plan}/accounts/#{transaction.account}", else: ~p"/accounts/#{transaction.account}"}>
               {transaction.account.name}
             </.link>
           <% else %>
@@ -45,9 +45,9 @@ defmodule BanyWeb.TransactionLive.Index do
         </:col>
         <:action :let={{_id, transaction}}>
           <div class="sr-only">
-            <.link navigate={~p"/transactions/#{transaction}"}>Show</.link>
+            <.link navigate={transaction_path(@current_plan, transaction)}>Show</.link>
           </div>
-          <.link navigate={~p"/transactions/#{transaction}/edit"}>Edit</.link>
+          <.link navigate={transaction_edit_path(@current_plan, transaction)}>Edit</.link>
         </:action>
         <:action :let={{id, transaction}}>
           <.link
@@ -64,10 +64,17 @@ defmodule BanyWeb.TransactionLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
+    current_plan = socket.assigns.current_plan
+
+    transactions =
+      if current_plan,
+        do: Ledger.list_transactions_for_plan(current_plan.id) |> Repo.preload([:category, :account]),
+        else: Ledger.list_transactions() |> Repo.preload([:category, :account])
+
     {:ok,
      socket
      |> assign(:page_title, "Listing Transactions")
-     |> stream(:transactions, Ledger.list_transactions() |> Repo.preload([:category, :account]))}
+     |> stream(:transactions, transactions)}
   end
 
   @impl true
@@ -77,4 +84,13 @@ defmodule BanyWeb.TransactionLive.Index do
 
     {:noreply, stream_delete(socket, :transactions, transaction)}
   end
+
+  defp transactions_new_path(nil), do: ~p"/transactions/new"
+  defp transactions_new_path(plan), do: ~p"/plans/#{plan}/transactions/new"
+
+  defp transaction_path(nil, t), do: ~p"/transactions/#{t}"
+  defp transaction_path(plan, t), do: ~p"/plans/#{plan}/transactions/#{t}"
+
+  defp transaction_edit_path(nil, t), do: ~p"/transactions/#{t}/edit"
+  defp transaction_edit_path(plan, t), do: ~p"/plans/#{plan}/transactions/#{t}/edit"
 end

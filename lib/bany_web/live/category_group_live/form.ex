@@ -7,7 +7,7 @@ defmodule BanyWeb.CategoryGroupLive.Form do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         {@page_title}
         <:subtitle>Use this form to manage category_group records in your database.</:subtitle>
@@ -15,7 +15,6 @@ defmodule BanyWeb.CategoryGroupLive.Form do
 
       <.form for={@form} id="category_group-form" phx-change="validate" phx-submit="save">
         <.input field={@form[:name]} type="text" label="Name" />
-        <.input field={@form[:plan_id]} type="select" label="Plan" options={Enum.map(@plans, &{&1.name, &1.id})} />
         <label :for={category <- @categories}>
           <input
             type="checkbox"
@@ -27,7 +26,7 @@ defmodule BanyWeb.CategoryGroupLive.Form do
         </label>
         <footer>
           <.button phx-disable-with="Saving..." variant="primary">Save Category group</.button>
-          <.button navigate={return_path(@return_to, @category_group)}>Cancel</.button>
+          <.button navigate={return_path(@return_to, @category_group, @current_plan)}>Cancel</.button>
         </footer>
       </.form>
     </Layouts.app>
@@ -36,13 +35,11 @@ defmodule BanyWeb.CategoryGroupLive.Form do
 
   @impl true
   def mount(params, _session, socket) do
-    plans = Budget.list_plans()
     categories = Budget.list_categories()
 
     {:ok,
      socket
      |> assign(:return_to, return_to(params["return_to"]))
-     |> assign(:plans, plans)
      |> assign(:categories, categories)
      |> apply_action(socket.assigns.live_action, params)}
   end
@@ -65,7 +62,7 @@ defmodule BanyWeb.CategoryGroupLive.Form do
   defp apply_action(socket, :new, _params) do
     category_group = %CategoryGroup{categories: []}
     changeset = Budget.change_category_group(category_group)
-    selected_category_ids = []
+    selected_category_ids = MapSet.new()
 
     socket
     |> assign(:page_title, "New Category group")
@@ -86,13 +83,10 @@ defmodule BanyWeb.CategoryGroupLive.Form do
       Budget.list_categories()
       |> Enum.filter(&MapSet.member?(selected_category_ids, &1.id))
 
-    # TODO: move put_assoc to the changeset function
     changeset =
       socket.assigns.category_group
       |> Budget.change_category_group(params)
       |> Ecto.Changeset.put_assoc(:categories, selected_categories)
-
-    # TODO: how to update the changeset with the selected_category_ids and trigger its validation?
 
     {:noreply,
      socket
@@ -105,33 +99,33 @@ defmodule BanyWeb.CategoryGroupLive.Form do
   end
 
   defp save_category_group(socket, :edit, params) do
-    #TODO: establish that a list of category_ids is passed to the changeset and repo update
-
     case Budget.update_category_group(socket.assigns.category_group, params) do
       {:ok, category_group} ->
         {:noreply,
          socket
          |> put_flash(:info, "Category group updated successfully")
-         |> push_navigate(to: return_path(socket.assigns.return_to, category_group))}
+         |> push_navigate(to: return_path(socket.assigns.return_to, category_group, socket.assigns.current_plan))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
 
-  defp save_category_group(socket, :new, category_group_params) do
-    case Budget.create_category_group(category_group_params) do
+  defp save_category_group(socket, :new, params) do
+    params = Map.put(params, "plan_id", socket.assigns.current_plan.id)
+
+    case Budget.create_category_group(params) do
       {:ok, category_group} ->
         {:noreply,
          socket
          |> put_flash(:info, "Category group created successfully")
-         |> push_navigate(to: return_path(socket.assigns.return_to, category_group))}
+         |> push_navigate(to: return_path(socket.assigns.return_to, category_group, socket.assigns.current_plan))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
 
-  defp return_path("index", _category_group), do: ~p"/category_groups"
-  defp return_path("show", category_group), do: ~p"/category_groups/#{category_group}"
+  defp return_path("index", _category_group, plan), do: ~p"/plans/#{plan}/category_groups"
+  defp return_path("show", category_group, plan), do: ~p"/plans/#{plan}/category_groups/#{category_group}"
 end

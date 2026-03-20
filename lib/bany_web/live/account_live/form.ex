@@ -7,7 +7,7 @@ defmodule BanyWeb.AccountLive.Form do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         {@page_title}
         <:subtitle>Use this form to manage account records in your database.</:subtitle>
@@ -17,7 +17,7 @@ defmodule BanyWeb.AccountLive.Form do
         <.input field={@form[:name]} type="text" label="Name" />
         <footer>
           <.button phx-disable-with="Saving..." variant="primary">Save Account</.button>
-          <.button navigate={return_path(@return_to, @account)}>Cancel</.button>
+          <.button navigate={return_path(@return_to, @account, @current_plan)}>Cancel</.button>
         </footer>
       </.form>
     </Layouts.app>
@@ -69,7 +69,7 @@ defmodule BanyWeb.AccountLive.Form do
         {:noreply,
          socket
          |> put_flash(:info, "Account updated successfully")
-         |> push_navigate(to: return_path(socket.assigns.return_to, account))}
+         |> push_navigate(to: return_path(socket.assigns.return_to, account, socket.assigns.current_plan))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
@@ -79,16 +79,26 @@ defmodule BanyWeb.AccountLive.Form do
   defp save_account(socket, :new, account_params) do
     case Ledger.create_account(account_params) do
       {:ok, account} ->
+        if socket.assigns.current_plan do
+          Bany.Repo.insert_all(
+            "plan_accounts",
+            [%{plan_id: socket.assigns.current_plan.id, account_id: account.id}],
+            on_conflict: :nothing
+          )
+        end
+
         {:noreply,
          socket
          |> put_flash(:info, "Account created successfully")
-         |> push_navigate(to: return_path(socket.assigns.return_to, account))}
+         |> push_navigate(to: return_path(socket.assigns.return_to, account, socket.assigns.current_plan))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
 
-  defp return_path("index", _account), do: ~p"/accounts"
-  defp return_path("show", account), do: ~p"/accounts/#{account}"
+  defp return_path("index", _a, nil), do: ~p"/accounts"
+  defp return_path("index", _a, plan), do: ~p"/plans/#{plan}/accounts"
+  defp return_path("show", a, nil), do: ~p"/accounts/#{a}"
+  defp return_path("show", a, plan), do: ~p"/plans/#{plan}/accounts/#{a}"
 end

@@ -9,7 +9,7 @@ defmodule BanyWeb.AdminLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         Admin
         <:subtitle>Import data or reset the database.</:subtitle>

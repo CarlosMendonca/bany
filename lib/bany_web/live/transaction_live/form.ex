@@ -8,7 +8,7 @@ defmodule BanyWeb.TransactionLive.Form do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         {@page_title}
         <:subtitle>Use this form to manage transaction records in your database.</:subtitle>
@@ -22,7 +22,7 @@ defmodule BanyWeb.TransactionLive.Form do
         <.input field={@form[:account_id]} type="select" label="Account" prompt="(none)" options={@accounts} />
         <footer>
           <.button phx-disable-with="Saving..." variant="primary">Save Transaction</.button>
-          <.button navigate={return_path(@return_to, @transaction)}>Cancel</.button>
+          <.button navigate={return_path(@return_to, @transaction, @current_plan)}>Cancel</.button>
         </footer>
       </.form>
     </Layouts.app>
@@ -31,11 +31,23 @@ defmodule BanyWeb.TransactionLive.Form do
 
   @impl true
   def mount(params, _session, socket) do
+    current_plan = socket.assigns.current_plan
+
+    categories =
+      if current_plan,
+        do: Budget.list_categories_for_plan(current_plan.id),
+        else: Budget.list_categories()
+
+    accounts =
+      if current_plan,
+        do: Ledger.list_accounts_for_plan(current_plan.id),
+        else: Ledger.list_accounts()
+
     {:ok,
      socket
      |> assign(:return_to, return_to(params["return_to"]))
-     |> assign(:categories, Budget.list_categories() |> Enum.map(&({&1.name, &1.id})))
-     |> assign(:accounts, Ledger.list_accounts() |> Enum.map(&({&1.name, &1.id})))
+     |> assign(:categories, Enum.map(categories, &{&1.name, &1.id}))
+     |> assign(:accounts, Enum.map(accounts, &{&1.name, &1.id}))
      |> apply_action(socket.assigns.live_action, params)}
   end
 
@@ -76,7 +88,7 @@ defmodule BanyWeb.TransactionLive.Form do
         {:noreply,
          socket
          |> put_flash(:info, "Transaction updated successfully")
-         |> push_navigate(to: return_path(socket.assigns.return_to, transaction))}
+         |> push_navigate(to: return_path(socket.assigns.return_to, transaction, socket.assigns.current_plan))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
@@ -89,13 +101,15 @@ defmodule BanyWeb.TransactionLive.Form do
         {:noreply,
          socket
          |> put_flash(:info, "Transaction created successfully")
-         |> push_navigate(to: return_path(socket.assigns.return_to, transaction))}
+         |> push_navigate(to: return_path(socket.assigns.return_to, transaction, socket.assigns.current_plan))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
 
-  defp return_path("index", _transaction), do: ~p"/transactions"
-  defp return_path("show", transaction), do: ~p"/transactions/#{transaction}"
+  defp return_path("index", _t, nil), do: ~p"/transactions"
+  defp return_path("index", _t, plan), do: ~p"/plans/#{plan}/transactions"
+  defp return_path("show", t, nil), do: ~p"/transactions/#{t}"
+  defp return_path("show", t, plan), do: ~p"/plans/#{plan}/transactions/#{t}"
 end

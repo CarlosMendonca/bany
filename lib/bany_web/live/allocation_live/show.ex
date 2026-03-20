@@ -6,15 +6,15 @@ defmodule BanyWeb.AllocationLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         Allocation {@allocation.id}
         <:subtitle>This is a allocation record from your database.</:subtitle>
         <:actions>
-          <.button navigate={~p"/allocations"}>
+          <.button navigate={~p"/plans/#{@current_plan.id}/allocations"}>
             <.icon name="hero-arrow-left" />
           </.button>
-          <.button variant="primary" navigate={~p"/allocations/#{@allocation}/edit?return_to=show"}>
+          <.button variant="primary" navigate={~p"/plans/#{@current_plan.id}/allocations/#{@allocation}/edit?return_to=show"}>
             <.icon name="hero-pencil-square" /> Edit allocation
           </.button>
         </:actions>

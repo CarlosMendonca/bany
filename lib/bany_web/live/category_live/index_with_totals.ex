@@ -6,20 +6,20 @@ defmodule BanyWeb.CategoryLive.IndexWithTotals do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         Plan for <%= Calendar.strftime(@dates.selected, "%B %Y") %>
         <:actions>
-          <.button navigate={~p"/categories/with_totals/#{@dates.previous.year}/#{@dates.previous.month}"}>
+          <.button navigate={~p"/plans/#{@current_plan.id}/categories/with_totals/#{@dates.previous.year}/#{@dates.previous.month}"}>
             <.icon name="hero-chevron-left" />
           </.button>
           <.button
             variant="primary"
-            navigate={~p"/categories/with_totals/#{@dates.current.year}/#{@dates.current.month}"}
+            navigate={~p"/plans/#{@current_plan.id}/categories/with_totals/#{@dates.current.year}/#{@dates.current.month}"}
           >
             <.icon name="hero-calendar-days" /> Today
           </.button>
-          <.button navigate={~p"/categories/with_totals/#{@dates.next.year}/#{@dates.next.month}"}>
+          <.button navigate={~p"/plans/#{@current_plan.id}/categories/with_totals/#{@dates.next.year}/#{@dates.next.month}"}>
             <.icon name="hero-chevron-right" />
           </.button>
         </:actions>
@@ -64,6 +64,7 @@ defmodule BanyWeb.CategoryLive.IndexWithTotals do
     today = Date.utc_today()
     {year, month} = get_year_and_month(params)
     selected_date = Date.new!(year, month, 1)
+    current_plan = socket.assigns.current_plan
 
     dates = %{
       selected: selected_date,
@@ -75,7 +76,7 @@ defmodule BanyWeb.CategoryLive.IndexWithTotals do
     socket =
       socket
       |> assign(:page_title, "Listing Categories with Totals")
-      |> assign(:category_groups, Budget.list_categories_with_totals(month, year))
+      |> assign(:category_groups, Budget.list_categories_with_totals(current_plan.id, month, year))
       |> assign(:dates, dates)
 
     {:ok, socket}

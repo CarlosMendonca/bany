@@ -7,7 +7,7 @@ defmodule BanyWeb.AllocationLive.Form do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         {@page_title}
         <:subtitle>Use this form to manage allocation records in your database.</:subtitle>
@@ -17,12 +17,6 @@ defmodule BanyWeb.AllocationLive.Form do
         <.input field={@form[:amount]} type="number" label="Amount" step="any" />
         <.input field={@form[:allocated_on]} type="date" label="Allocated on" />
         <.input
-          field={@form[:plan_id]}
-          type="select"
-          label="Plan"
-          options={Enum.map(@plans, &{&1.name, &1.id})}
-        />
-        <.input
           field={@form[:category_id]}
           type="select"
           label="Category"
@@ -30,7 +24,7 @@ defmodule BanyWeb.AllocationLive.Form do
         />
         <footer>
           <.button phx-disable-with="Saving..." variant="primary">Save Allocation</.button>
-          <.button navigate={return_path(@return_to, @allocation)}>Cancel</.button>
+          <.button navigate={return_path(@return_to, @allocation, @current_plan)}>Cancel</.button>
         </footer>
       </.form>
     </Layouts.app>
@@ -39,11 +33,17 @@ defmodule BanyWeb.AllocationLive.Form do
 
   @impl true
   def mount(params, _session, socket) do
+    current_plan = socket.assigns.current_plan
+
+    categories =
+      if current_plan,
+        do: Budget.list_categories_for_plan(current_plan.id),
+        else: Budget.list_categories()
+
     {:ok,
      socket
      |> assign(:return_to, return_to(params["return_to"]))
-     |> assign(:plans, Budget.list_plans())
-     |> assign(:categories, Budget.list_categories())
+     |> assign(:categories, categories)
      |> apply_action(socket.assigns.live_action, params)}
   end
 
@@ -84,7 +84,7 @@ defmodule BanyWeb.AllocationLive.Form do
         {:noreply,
          socket
          |> put_flash(:info, "Allocation updated successfully")
-         |> push_navigate(to: return_path(socket.assigns.return_to, allocation))}
+         |> push_navigate(to: return_path(socket.assigns.return_to, allocation, socket.assigns.current_plan))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
@@ -92,18 +92,20 @@ defmodule BanyWeb.AllocationLive.Form do
   end
 
   defp save_allocation(socket, :new, allocation_params) do
+    allocation_params = Map.put(allocation_params, "plan_id", socket.assigns.current_plan.id)
+
     case Budget.create_allocation(allocation_params) do
       {:ok, allocation} ->
         {:noreply,
          socket
          |> put_flash(:info, "Allocation created successfully")
-         |> push_navigate(to: return_path(socket.assigns.return_to, allocation))}
+         |> push_navigate(to: return_path(socket.assigns.return_to, allocation, socket.assigns.current_plan))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
 
-  defp return_path("index", _allocation), do: ~p"/allocations"
-  defp return_path("show", allocation), do: ~p"/allocations/#{allocation}"
+  defp return_path("index", _allocation, plan), do: ~p"/plans/#{plan}/allocations"
+  defp return_path("show", allocation, plan), do: ~p"/plans/#{plan}/allocations/#{allocation}"
 end

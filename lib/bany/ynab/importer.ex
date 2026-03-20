@@ -79,7 +79,7 @@ defmodule Bany.YNAB.Importer do
       [account_name, _flag, date_str, payee, _combined, group_name, category_name, memo,
        outflow_str, inflow_str, _cleared] = row
 
-      with {:ok, account, cache, stats} <- find_or_create_account(account_name, cache, stats),
+      with {:ok, account, cache, stats} <- find_or_create_account(account_name, plan, cache, stats),
            {:ok, category_id, cache, stats} <-
              resolve_category(group_name, category_name, plan, cache, stats) do
         case Repo.insert(%Transaction{
@@ -107,7 +107,7 @@ defmodule Bany.YNAB.Importer do
 
   defp resolve_category(group_name, category_name, plan, cache, stats) do
     with {:ok, group, cache, stats} <- find_or_create_category_group(group_name, plan, cache, stats),
-         {:ok, category, cache, stats} <- find_or_create_category(category_name, group, cache, stats) do
+         {:ok, category, cache, stats} <- find_or_create_category(category_name, group, plan, cache, stats) do
       {:ok, category.id, cache, stats}
     end
   end
@@ -125,13 +125,14 @@ defmodule Bany.YNAB.Importer do
     end
   end
 
-  defp find_or_create_account(name, cache, stats) do
+  defp find_or_create_account(name, plan, cache, stats) do
     case Map.get(cache.accounts, name) do
       nil ->
         case Repo.get_by(Account, name: name) do
           nil ->
             case Repo.insert(Account.changeset(%Account{}, %{name: name})) do
               {:ok, acc} ->
+                Repo.insert_all("plan_accounts", [%{plan_id: plan.id, account_id: acc.id}], on_conflict: :nothing)
                 cache = put_in(cache, [:accounts, name], acc)
                 stats = update_in(stats.accounts.created, &(&1 + 1))
                 {:ok, acc, cache, stats}
@@ -142,6 +143,7 @@ defmodule Bany.YNAB.Importer do
             end
 
           acc ->
+            Repo.insert_all("plan_accounts", [%{plan_id: plan.id, account_id: acc.id}], on_conflict: :nothing)
             {:ok, acc, put_in(cache, [:accounts, name], acc), stats}
         end
 
@@ -177,7 +179,7 @@ defmodule Bany.YNAB.Importer do
     end
   end
 
-  defp find_or_create_category(name, group, cache, stats) do
+  defp find_or_create_category(name, group, plan, cache, stats) do
     cache_key = {name, group.id}
 
     case Map.get(cache.categories, cache_key) do
@@ -200,6 +202,7 @@ defmodule Bany.YNAB.Importer do
                   [%{category_group_id: group.id, category_id: cat.id}],
                   on_conflict: :nothing
                 )
+                Repo.insert_all("plan_categories", [%{plan_id: plan.id, category_id: cat.id}], on_conflict: :nothing)
 
                 cache = put_in(cache, [:categories, cache_key], cat)
                 stats = update_in(stats.categories.created, &(&1 + 1))
@@ -211,6 +214,7 @@ defmodule Bany.YNAB.Importer do
             end
 
           cat ->
+            Repo.insert_all("plan_categories", [%{plan_id: plan.id, category_id: cat.id}], on_conflict: :nothing)
             {:ok, cat, put_in(cache, [:categories, cache_key], cat), stats}
         end
 

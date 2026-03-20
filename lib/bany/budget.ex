@@ -23,11 +23,17 @@ defmodule Bany.Budget do
     Repo.all(Category)
   end
 
-  def list_categories_with_totals(month, year) do
+  def list_categories_for_plan(plan_id) do
+    from(c in Category,
+      join: pc in "plan_categories", on: pc.category_id == c.id and pc.plan_id == ^plan_id
+    )
+    |> Repo.all()
+  end
+
+  def list_categories_with_totals(plan_id, month, year) do
     date_range = month_date_range(month, year)
 
-    date_range
-    |> query_categories_with_totals()
+    query_categories_with_totals(date_range, plan_id)
     |> compute_category_totals()
     |> group_by_category_group()
     |> append_uncategorized_transactions(date_range)
@@ -38,7 +44,7 @@ defmodule Bany.Budget do
     {first_day, Date.end_of_month(first_day)}
   end
 
-  defp query_categories_with_totals({first_day, end_of_month}) do
+  defp query_categories_with_totals({first_day, end_of_month}, plan_id) do
     transactions_query =
       from(
         t in Transaction,
@@ -49,8 +55,9 @@ defmodule Bany.Budget do
 
     from(
       c in Category,
+      join: pc in "plan_categories", on: pc.category_id == c.id and pc.plan_id == ^plan_id,
       left_join: a in Allocation,
-      on: a.category_id == c.id and a.allocated_on == ^first_day,
+      on: a.category_id == c.id and a.allocated_on == ^first_day and a.plan_id == ^plan_id,
       left_join: t_sums in subquery(transactions_query),
       on: t_sums.category_id == c.id,
       preload: [:category_groups],
@@ -302,6 +309,11 @@ defmodule Bany.Budget do
     Repo.all(CategoryGroup)
   end
 
+  def list_category_groups_for_plan(plan_id) do
+    from(cg in CategoryGroup, where: cg.plan_id == ^plan_id)
+    |> Repo.all()
+  end
+
   @doc """
   Gets a single category_group.
 
@@ -352,10 +364,9 @@ defmodule Bany.Budget do
   """
   def update_category_group(%CategoryGroup{} = category_group, attrs) do
     categories = Map.get(attrs, "category_ids", []) |> Enum.map(&get_category!/1)
-    # TOOD: introduce a function to get multiple categories from a list of ids
-
 
     category_group
+    |> Repo.preload(:categories)
     |> CategoryGroup.changeset(attrs)
     |> Ecto.Changeset.put_assoc(:categories, categories)
     |> Repo.update()
@@ -401,6 +412,11 @@ defmodule Bany.Budget do
   """
   def list_allocations do
     Repo.all(Allocation)
+  end
+
+  def list_allocations_for_plan(plan_id) do
+    from(a in Allocation, where: a.plan_id == ^plan_id)
+    |> Repo.all()
   end
 
   @doc """

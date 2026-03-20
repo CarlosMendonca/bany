@@ -19,38 +19,60 @@ defmodule BanyWeb.Router do
 
     get "/", PageController, :home
 
-    live "/categories/with_totals/:year/:month", CategoryLive.IndexWithTotals, :index
-    live "/categories", CategoryLive.Index, :index
-    live "/categories/new", CategoryLive.Form, :new
-    live "/categories/:id", CategoryLive.Show, :show
-    live "/categories/:id/edit", CategoryLive.Form, :edit
+    # Accessible without a plan
+    live_session :default, on_mount: {BanyWeb.PlanContext, :default} do
+      live "/categories", CategoryLive.Index, :index
+      live "/categories/new", CategoryLive.Form, :new
+      live "/categories/:id", CategoryLive.Show, :show
+      live "/categories/:id/edit", CategoryLive.Form, :edit
 
-    live "/transactions", TransactionLive.Index, :index
-    live "/transactions/new", TransactionLive.Form, :new
-    live "/transactions/:id", TransactionLive.Show, :show
-    live "/transactions/:id/edit", TransactionLive.Form, :edit
+      live "/transactions", TransactionLive.Index, :index
+      live "/transactions/new", TransactionLive.Form, :new
+      live "/transactions/:id", TransactionLive.Show, :show
+      live "/transactions/:id/edit", TransactionLive.Form, :edit
 
-    live "/accounts", AccountLive.Index, :index
-    live "/accounts/new", AccountLive.Form, :new
-    live "/accounts/:id", AccountLive.Show, :show
-    live "/accounts/:id/edit", AccountLive.Form, :edit
+      live "/plans", PlanLive.Index, :index
+      live "/plans/new", PlanLive.Form, :new
+      live "/plans/:id", PlanLive.Show, :show
+      live "/plans/:id/edit", PlanLive.Form, :edit
 
-    live "/plans", PlanLive.Index, :index
-    live "/plans/new", PlanLive.Form, :new
-    live "/plans/:id", PlanLive.Show, :show
-    live "/plans/:id/edit", PlanLive.Form, :edit
+      live "/admin", AdminLive, :admin
+    end
 
-    live "/category_groups", CategoryGroupLive.Index, :index
-    live "/category_groups/new", CategoryGroupLive.Form, :new
-    live "/category_groups/:id", CategoryGroupLive.Show, :show
-    live "/category_groups/:id/edit", CategoryGroupLive.Form, :edit
+    # Require a valid plan — redirect to /plans if missing/invalid
+    live_session :require_plan, on_mount: {BanyWeb.PlanContext, :require_plan} do
+      live "/accounts", AccountLive.Index, :index
+      live "/accounts/new", AccountLive.Form, :new
+      live "/accounts/:id", AccountLive.Show, :show
+      live "/accounts/:id/edit", AccountLive.Form, :edit
 
-    live "/allocations", AllocationLive.Index, :index
-    live "/allocations/new", AllocationLive.Form, :new
-    live "/allocations/:id", AllocationLive.Show, :show
-    live "/allocations/:id/edit", AllocationLive.Form, :edit
+      live "/plans/:plan_id/category_groups", CategoryGroupLive.Index, :index
+      live "/plans/:plan_id/category_groups/new", CategoryGroupLive.Form, :new
+      live "/plans/:plan_id/category_groups/:id", CategoryGroupLive.Show, :show
+      live "/plans/:plan_id/category_groups/:id/edit", CategoryGroupLive.Form, :edit
 
-    live "/admin", AdminLive, :admin
+      live "/plans/:plan_id/allocations", AllocationLive.Index, :index
+      live "/plans/:plan_id/allocations/new", AllocationLive.Form, :new
+      live "/plans/:plan_id/allocations/:id", AllocationLive.Show, :show
+      live "/plans/:plan_id/allocations/:id/edit", AllocationLive.Form, :edit
+
+      live "/plans/:plan_id/categories/with_totals/:year/:month", CategoryLive.IndexWithTotals, :index
+
+      live "/plans/:plan_id/categories", CategoryLive.Index, :index
+      live "/plans/:plan_id/categories/new", CategoryLive.Form, :new
+      live "/plans/:plan_id/categories/:id", CategoryLive.Show, :show
+      live "/plans/:plan_id/categories/:id/edit", CategoryLive.Form, :edit
+
+      live "/plans/:plan_id/transactions", TransactionLive.Index, :index
+      live "/plans/:plan_id/transactions/new", TransactionLive.Form, :new
+      live "/plans/:plan_id/transactions/:id", TransactionLive.Show, :show
+      live "/plans/:plan_id/transactions/:id/edit", TransactionLive.Form, :edit
+
+      live "/plans/:plan_id/accounts", AccountLive.Index, :index
+      live "/plans/:plan_id/accounts/new", AccountLive.Form, :new
+      live "/plans/:plan_id/accounts/:id", AccountLive.Show, :show
+      live "/plans/:plan_id/accounts/:id/edit", AccountLive.Form, :edit
+    end
   end
 
   # Other scopes may use custom stacks.

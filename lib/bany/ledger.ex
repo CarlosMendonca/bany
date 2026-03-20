@@ -22,6 +22,13 @@ defmodule Bany.Ledger do
     Repo.all(Transaction)
   end
 
+  def list_transactions_for_plan(plan_id) do
+    from(t in Transaction,
+      join: pa in "plan_accounts", on: pa.account_id == t.account_id and pa.plan_id == ^plan_id
+    )
+    |> Repo.all()
+  end
+
   @doc """
   Gets a single transaction.
 
@@ -114,6 +121,13 @@ defmodule Bany.Ledger do
   """
   def list_accounts do
     Repo.all(Account)
+  end
+
+  def list_accounts_for_plan(plan_id) do
+    from(a in Account,
+      join: pa in "plan_accounts", on: pa.account_id == a.id and pa.plan_id == ^plan_id
+    )
+    |> Repo.all()
   end
 
   @doc """

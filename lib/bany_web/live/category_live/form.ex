@@ -7,7 +7,7 @@ defmodule BanyWeb.CategoryLive.Form do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         {@page_title}
         <:subtitle>Use this form to manage category records in your database.</:subtitle>
@@ -17,7 +17,7 @@ defmodule BanyWeb.CategoryLive.Form do
         <.input field={@form[:name]} type="text" label="Name" />
         <footer>
           <.button phx-disable-with="Saving..." variant="primary">Save Category</.button>
-          <.button navigate={return_path(@return_to, @category)}>Cancel</.button>
+          <.button navigate={return_path(@return_to, @category, @current_plan)}>Cancel</.button>
         </footer>
       </.form>
     </Layouts.app>
@@ -71,7 +71,7 @@ defmodule BanyWeb.CategoryLive.Form do
         {:noreply,
          socket
          |> put_flash(:info, "Category updated successfully")
-         |> push_navigate(to: return_path(socket.assigns.return_to, category))}
+         |> push_navigate(to: return_path(socket.assigns.return_to, category, socket.assigns.current_plan))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
@@ -81,16 +81,26 @@ defmodule BanyWeb.CategoryLive.Form do
   defp save_category(socket, :new, category_params) do
     case Budget.create_category(category_params) do
       {:ok, category} ->
+        if socket.assigns.current_plan do
+          Bany.Repo.insert_all(
+            "plan_categories",
+            [%{plan_id: socket.assigns.current_plan.id, category_id: category.id}],
+            on_conflict: :nothing
+          )
+        end
+
         {:noreply,
          socket
          |> put_flash(:info, "Category created successfully")
-         |> push_navigate(to: return_path(socket.assigns.return_to, category))}
+         |> push_navigate(to: return_path(socket.assigns.return_to, category, socket.assigns.current_plan))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
 
-  defp return_path("index", _category), do: ~p"/categories"
-  defp return_path("show", category), do: ~p"/categories/#{category}"
+  defp return_path("index", _c, nil), do: ~p"/categories"
+  defp return_path("index", _c, plan), do: ~p"/plans/#{plan}/categories"
+  defp return_path("show", c, nil), do: ~p"/categories/#{c}"
+  defp return_path("show", c, plan), do: ~p"/plans/#{plan}/categories/#{c}"
 end

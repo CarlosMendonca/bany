@@ -6,7 +6,7 @@ defmodule BanyWeb.PlanLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         Listing Plans
         <:actions>
@@ -22,6 +22,11 @@ defmodule BanyWeb.PlanLive.Index do
         row_click={fn {_id, plan} -> JS.navigate(~p"/plans/#{plan}") end}
       >
         <:col :let={{_id, plan}} label="Name">{plan.name}</:col>
+        <:action :let={{_id, plan}}>
+          <.link href={~p"/plans/#{plan}/category_groups"} class="btn btn-sm btn-primary">
+            Select
+          </.link>
+        </:action>
         <:action :let={{_id, plan}}>
           <div class="sr-only">
             <.link navigate={~p"/plans/#{plan}"}>Show</.link>

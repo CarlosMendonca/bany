@@ -7,7 +7,7 @@ defmodule BanyWeb.PlanLive.Form do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         {@page_title}
         <:subtitle>Use this form to manage plan records in your database.</:subtitle>

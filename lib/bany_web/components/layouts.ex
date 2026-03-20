@@ -27,6 +27,8 @@ defmodule BanyWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
 
+  attr :current_plan, :map, default: nil
+
   slot :inner_block, required: true
 
   def app(assigns) do
@@ -41,34 +43,21 @@ defmodule BanyWeb.Layouts do
       <div class="flex-none">
         <ul class="flex flex-column px-1 space-x-4 items-center">
           <li>
-            <a href={~p"/plans"} class="btn btn-ghost">Plans</a>
+            <span class="text-sm px-3 opacity-60">
+              {if @current_plan, do: @current_plan.name, else: "No Plan Selected"}
+            </span>
           </li>
-          <li>
-            <a href={~p"/categories"} class="btn btn-ghost">Categories</a>
-          </li>
-          <li>
-            <a href={~p"/categories/with_totals/#{Date.utc_today().year}/#{Date.utc_today().month}"} class="btn btn-ghost">
-              Categories with Totals
-            </a>
-          </li>
-          <li>
-            <a href={~p"/category_groups"} class="btn btn-ghost">Category Groups</a>
-          </li>
-          <li>
-            <a href={~p"/transactions"} class="btn btn-ghost">Transactions</a>
-          </li>
-          <li>
-            <a href={~p"/accounts"} class="btn btn-ghost">Accounts</a>
-          </li>
-          <li>
-            <a href={~p"/allocations"} class="btn btn-ghost">Allocations</a>
-          </li>
-          <li>
-            <a href={~p"/admin"} class="btn btn-ghost">Admin</a>
-          </li>
-          <li>
-            <.theme_toggle />
-          </li>
+          <li><a href={~p"/plans"} class="btn btn-ghost">Plans</a></li>
+          <li><a href={transactions_href(@current_plan)} class="btn btn-ghost">Transactions</a></li>
+          <li><a href={categories_href(@current_plan)} class="btn btn-ghost">Categories</a></li>
+          <%= if @current_plan do %>
+            <li><a href={~p"/plans/#{@current_plan}/category_groups"} class="btn btn-ghost">Category Groups</a></li>
+            <li><a href={~p"/plans/#{@current_plan}/allocations"} class="btn btn-ghost">Allocations</a></li>
+            <li><a href={~p"/plans/#{@current_plan}/categories/with_totals/#{Date.utc_today().year}/#{Date.utc_today().month}"} class="btn btn-ghost">Budgets</a></li>
+            <li><a href={~p"/plans/#{@current_plan}/accounts"} class="btn btn-ghost">Accounts</a></li>
+          <% end %>
+          <li><a href={~p"/admin"} class="btn btn-ghost">Admin</a></li>
+          <li><.theme_toggle /></li>
         </ul>
       </div>
     </header>
@@ -82,6 +71,12 @@ defmodule BanyWeb.Layouts do
     <.flash_group flash={@flash} />
     """
   end
+
+  defp transactions_href(nil), do: ~p"/transactions"
+  defp transactions_href(plan), do: ~p"/plans/#{plan}/transactions"
+
+  defp categories_href(nil), do: ~p"/categories"
+  defp categories_href(plan), do: ~p"/plans/#{plan}/categories"
 
   @doc """
   Shows the flash group with standard titles and content.

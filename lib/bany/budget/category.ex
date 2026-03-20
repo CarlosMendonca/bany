@@ -6,6 +6,7 @@ defmodule Bany.Budget.Category do
     field :name, :string
     has_many :transactions, Bany.Ledger.Transaction
     many_to_many :category_groups, Bany.Budget.CategoryGroup, join_through: "category_groups_categories"
+    many_to_many :plans, Bany.Budget.Plan, join_through: "plan_categories"
 
     field :total_spent, :decimal, virtual: true
     field :total_assigned, :decimal, virtual: true

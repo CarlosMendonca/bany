@@ -6,15 +6,15 @@ defmodule BanyWeb.AccountLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         Account {@account.id}
         <:subtitle>This is an account record from your database.</:subtitle>
         <:actions>
-          <.button navigate={~p"/accounts"}>
+          <.button navigate={accounts_path(@current_plan)}>
             <.icon name="hero-arrow-left" />
           </.button>
-          <.button variant="primary" navigate={~p"/accounts/#{@account}/edit?return_to=show"}>
+          <.button variant="primary" navigate={account_edit_path(@current_plan, @account)}>
             <.icon name="hero-pencil-square" /> Edit account
           </.button>
         </:actions>
@@ -34,4 +34,10 @@ defmodule BanyWeb.AccountLive.Show do
      |> assign(:page_title, "Show Account")
      |> assign(:account, Ledger.get_account!(id))}
   end
+
+  defp accounts_path(nil), do: ~p"/accounts"
+  defp accounts_path(plan), do: ~p"/plans/#{plan}/accounts"
+
+  defp account_edit_path(nil, a), do: ~p"/accounts/#{a}/edit?return_to=show"
+  defp account_edit_path(plan, a), do: ~p"/plans/#{plan}/accounts/#{a}/edit?return_to=show"
 end

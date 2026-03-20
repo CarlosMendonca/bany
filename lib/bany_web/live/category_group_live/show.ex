@@ -6,15 +6,15 @@ defmodule BanyWeb.CategoryGroupLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         Category group {@category_group.id}
         <:subtitle>This is a category_group record from your database.</:subtitle>
         <:actions>
-          <.button navigate={~p"/category_groups"}>
+          <.button navigate={~p"/plans/#{@current_plan.id}/category_groups"}>
             <.icon name="hero-arrow-left" />
           </.button>
-          <.button variant="primary" navigate={~p"/category_groups/#{@category_group}/edit?return_to=show"}>
+          <.button variant="primary" navigate={~p"/plans/#{@current_plan.id}/category_groups/#{@category_group}/edit?return_to=show"}>
             <.icon name="hero-pencil-square" /> Edit category_group
           </.button>
         </:actions>

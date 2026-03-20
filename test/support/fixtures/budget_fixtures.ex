@@ -33,28 +33,40 @@ defmodule Bany.BudgetFixtures do
   end
 
   @doc """
-  Generate a category_group.
+  Generate a category_group. Creates a plan automatically if plan_id is not provided.
   """
   def category_group_fixture(attrs \\ %{}) do
+    plan_id = Map.get(attrs, :plan_id) || plan_fixture().id
+
     {:ok, category_group} =
       attrs
       |> Enum.into(%{
-        name: "some name"
+        name: "some name",
+        plan_id: plan_id
       })
       |> Bany.Budget.create_category_group()
 
-    category_group
+    # Re-fetch to get the struct as it would appear from Repo.get! (no preloaded assocs)
+    Bany.Repo.get!(Bany.Budget.CategoryGroup, category_group.id)
   end
 
   @doc """
-  Generate a allocation.
+  Generate an allocation. Creates a plan and category automatically if not provided.
   """
   def allocation_fixture(attrs \\ %{}) do
+    plan_id = Map.get(attrs, :plan_id) || plan_fixture().id
+    category_id = Map.get(attrs, :category_id) || category_fixture().id
+
+    # Ensure the category is linked to the plan so form selects populate correctly
+    Bany.Repo.insert_all("plan_categories", [%{plan_id: plan_id, category_id: category_id}], on_conflict: :nothing)
+
     {:ok, allocation} =
       attrs
       |> Enum.into(%{
-        allocated_on: ~D[2025-08-26],
-        amount: "120.5"
+        allocated_on: ~D[2025-08-01],
+        amount: "120.5",
+        plan_id: plan_id,
+        category_id: category_id
       })
       |> Bany.Budget.create_allocation()
 

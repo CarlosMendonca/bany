@@ -129,7 +129,8 @@ defmodule Bany.BudgetTest do
     end
 
     test "create_category_group/1 with valid data creates a category_group" do
-      valid_attrs = %{name: "some name"}
+      plan = plan_fixture()
+      valid_attrs = %{name: "some name", plan_id: plan.id}
 
       assert {:ok, %CategoryGroup{} = category_group} = Budget.create_category_group(valid_attrs)
       assert category_group.name == "some name"
@@ -183,11 +184,13 @@ defmodule Bany.BudgetTest do
     end
 
     test "create_allocation/1 with valid data creates a allocation" do
-      valid_attrs = %{amount: "120.5", allocated_on: ~D[2025-08-26]}
+      plan = plan_fixture()
+      category = category_fixture()
+      valid_attrs = %{amount: "120.5", allocated_on: ~D[2025-08-01], plan_id: plan.id, category_id: category.id}
 
       assert {:ok, %Allocation{} = allocation} = Budget.create_allocation(valid_attrs)
       assert allocation.amount == Decimal.new("120.5")
-      assert allocation.allocated_on == ~D[2025-08-26]
+      assert allocation.allocated_on == ~D[2025-08-01]
     end
 
     test "create_allocation/1 with invalid data returns error changeset" do
@@ -196,11 +199,11 @@ defmodule Bany.BudgetTest do
 
     test "update_allocation/2 with valid data updates the allocation" do
       allocation = allocation_fixture()
-      update_attrs = %{amount: "456.7", allocated_on: ~D[2025-08-27]}
+      update_attrs = %{amount: "456.7", allocated_on: ~D[2025-09-15]}
 
       assert {:ok, %Allocation{} = allocation} = Budget.update_allocation(allocation, update_attrs)
       assert allocation.amount == Decimal.new("456.7")
-      assert allocation.allocated_on == ~D[2025-08-27]
+      assert allocation.allocated_on == ~D[2025-09-01]
     end
 
     test "update_allocation/2 with invalid data returns error changeset" do

@@ -6,11 +6,11 @@ defmodule BanyWeb.CategoryGroupLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_plan={@current_plan}>
       <.header>
         Listing Category groups
         <:actions>
-          <.button variant="primary" navigate={~p"/category_groups/new"}>
+          <.button variant="primary" navigate={~p"/plans/#{@current_plan.id}/category_groups/new"}>
             <.icon name="hero-plus" /> New Category group
           </.button>
         </:actions>
@@ -19,14 +19,14 @@ defmodule BanyWeb.CategoryGroupLive.Index do
       <.table
         id="category_groups"
         rows={@streams.category_groups}
-        row_click={fn {_id, category_group} -> JS.navigate(~p"/category_groups/#{category_group}") end}
+        row_click={fn {_id, category_group} -> JS.navigate(~p"/plans/#{@current_plan.id}/category_groups/#{category_group}") end}
       >
         <:col :let={{_id, category_group}} label="Name">{category_group.name}</:col>
         <:action :let={{_id, category_group}}>
           <div class="sr-only">
-            <.link navigate={~p"/category_groups/#{category_group}"}>Show</.link>
+            <.link navigate={~p"/plans/#{@current_plan.id}/category_groups/#{category_group}"}>Show</.link>
           </div>
-          <.link navigate={~p"/category_groups/#{category_group}/edit"}>Edit</.link>
+          <.link navigate={~p"/plans/#{@current_plan.id}/category_groups/#{category_group}/edit"}>Edit</.link>
         </:action>
         <:action :let={{id, category_group}}>
           <.link
@@ -43,10 +43,12 @@ defmodule BanyWeb.CategoryGroupLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
+    current_plan = socket.assigns.current_plan
+
     {:ok,
      socket
      |> assign(:page_title, "Listing Category groups")
-     |> stream(:category_groups, Budget.list_category_groups())}
+     |> stream(:category_groups, Budget.list_category_groups_for_plan(current_plan.id))}
   end
 
   @impl true

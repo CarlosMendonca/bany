@@ -5,6 +5,7 @@ defmodule Bany.Ledger.Account do
   schema "accounts" do
     field :name, :string
     has_many :transactions, Bany.Ledger.Transaction
+    many_to_many :plans, Bany.Budget.Plan, join_through: "plan_accounts"
 
     timestamps(type: :utc_datetime)
   end
