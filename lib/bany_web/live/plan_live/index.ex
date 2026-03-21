@@ -23,7 +23,7 @@ defmodule BanyWeb.PlanLive.Index do
       >
         <:col :let={{_id, plan}} label="Name">{plan.name}</:col>
         <:action :let={{_id, plan}}>
-          <.link href={~p"/plans/#{plan}/category_groups"} class="btn btn-sm btn-primary">
+          <.link href={~p"/plans/#{plan}/category_groups"} class="btn btn-sm btn-secondary">
             Select
           </.link>
         </:action>

@@ -22,18 +22,6 @@ defmodule BanyWeb.TransactionLive.Index do
         rows={@streams.transactions}
         row_click={fn {_id, transaction} -> JS.navigate(transaction_path(@current_plan, transaction)) end}
       >
-        <:col :let={{_id, transaction}} label="Memo">{transaction.memo}</:col>
-        <:col :let={{_id, transaction}} label="Date">{transaction.date}</:col>
-        <:col :let={{_id, transaction}} label="Amount">{transaction.amount}</:col>
-        <:col :let={{_id, transaction}} label="Category">
-          <%= if transaction.category do %>
-            <.link navigate={if @current_plan, do: ~p"/plans/#{@current_plan}/categories/#{transaction.category}", else: ~p"/categories/#{transaction.category}"}>
-              {transaction.category.name}
-            </.link>
-          <% else %>
-            (none)
-          <% end %>
-        </:col>
         <:col :let={{_id, transaction}} label="Account">
           <%= if transaction.account do %>
             <.link navigate={if @current_plan, do: ~p"/plans/#{@current_plan}/accounts/#{transaction.account}", else: ~p"/accounts/#{transaction.account}"}>
@@ -43,6 +31,18 @@ defmodule BanyWeb.TransactionLive.Index do
             (none)
           <% end %>
         </:col>
+        <:col :let={{_id, transaction}} label="Date">{transaction.date}</:col>
+        <:col :let={{_id, transaction}} label="Category">
+          <%= if transaction.category do %>
+            <.link navigate={if @current_plan, do: ~p"/plans/#{@current_plan}/categories/#{transaction.category}", else: ~p"/categories/#{transaction.category}"}>
+              {transaction.category.name}
+            </.link>
+          <% else %>
+            (none)
+          <% end %>
+        </:col>
+        <:col :let={{_id, transaction}} label="Memo">{transaction.memo}</:col>
+        <:col :let={{_id, transaction}} label="Amount">{transaction.amount}</:col>
         <:action :let={{_id, transaction}}>
           <div class="sr-only">
             <.link navigate={transaction_path(@current_plan, transaction)}>Show</.link>
