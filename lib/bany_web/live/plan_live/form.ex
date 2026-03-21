@@ -7,7 +7,7 @@ defmodule BanyWeb.PlanLive.Form do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_plan={@current_plan}>
+    <Layouts.app flash={@flash} current_plan={@current_plan} current_scope={@current_scope}>
       <.header>
         {@page_title}
         <:subtitle>Use this form to manage plan records in your database.</:subtitle>
@@ -77,7 +77,7 @@ defmodule BanyWeb.PlanLive.Form do
   end
 
   defp save_plan(socket, :new, plan_params) do
-    case Budget.create_plan(plan_params) do
+    case Budget.create_plan(plan_params, socket.assigns.current_scope.user) do
       {:ok, plan} ->
         {:noreply,
          socket

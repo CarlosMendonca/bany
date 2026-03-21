@@ -8,7 +8,7 @@ defmodule BanyWeb.TransactionLive.Form do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_plan={@current_plan}>
+    <Layouts.app flash={@flash} current_plan={@current_plan} current_scope={@current_scope}>
       <.header>
         {@page_title}
         <:subtitle>Use this form to manage transaction records in your database.</:subtitle>
@@ -18,6 +18,7 @@ defmodule BanyWeb.TransactionLive.Form do
         <.input field={@form[:memo]} type="text" label="Memo" />
         <.input field={@form[:date]} type="date" label="Date" />
         <.input field={@form[:amount]} type="number" label="Amount" step="any" />
+        <.input field={@form[:payee_id]} type="select" label="Payee" prompt="(none)" options={@payees} />
         <.input field={@form[:category_id]} type="select" label="Category" prompt="(none)" options={@categories} />
         <.input field={@form[:account_id]} type="select" label="Account" prompt="(none)" options={@accounts} />
         <footer>
@@ -43,11 +44,17 @@ defmodule BanyWeb.TransactionLive.Form do
         do: Ledger.list_accounts_for_plan(current_plan.id),
         else: Ledger.list_accounts()
 
+    payees =
+      if current_plan,
+        do: Ledger.list_payees_for_plan(current_plan.id),
+        else: Ledger.list_payees()
+
     {:ok,
      socket
      |> assign(:return_to, return_to(params["return_to"]))
      |> assign(:categories, Enum.map(categories, &{&1.name, &1.id}))
      |> assign(:accounts, Enum.map(accounts, &{&1.name, &1.id}))
+     |> assign(:payees, Enum.map(payees, &{&1.name, &1.id}))
      |> apply_action(socket.assigns.live_action, params)}
   end
 

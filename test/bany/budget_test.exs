@@ -74,15 +74,17 @@ defmodule Bany.BudgetTest do
       assert Budget.get_plan!(plan.id) == plan
     end
 
-    test "create_plan/1 with valid data creates a plan" do
+    test "create_plan/2 with valid data creates a plan" do
+      user = Bany.AccountsFixtures.user_fixture()
       valid_attrs = %{name: "some name"}
 
-      assert {:ok, %Plan{} = plan} = Budget.create_plan(valid_attrs)
+      assert {:ok, %Plan{} = plan} = Budget.create_plan(valid_attrs, user)
       assert plan.name == "some name"
     end
 
-    test "create_plan/1 with invalid data returns error changeset" do
-      assert {:error, %Ecto.Changeset{}} = Budget.create_plan(@invalid_attrs)
+    test "create_plan/2 with invalid data returns error changeset" do
+      user = Bany.AccountsFixtures.user_fixture()
+      assert {:error, %Ecto.Changeset{}} = Budget.create_plan(@invalid_attrs, user)
     end
 
     test "update_plan/2 with valid data updates the plan" do

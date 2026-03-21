@@ -9,7 +9,7 @@ defmodule BanyWeb.AdminLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_plan={@current_plan}>
+    <Layouts.app flash={@flash} current_plan={@current_plan} current_scope={@current_scope}>
       <.header>
         Admin
         <:subtitle>Import data or reset the database.</:subtitle>
@@ -130,7 +130,7 @@ defmodule BanyWeb.AdminLive do
 
       result =
         consume_uploaded_entries(socket, :csv_file, fn %{path: path}, _entry ->
-          Importer.import_csv(path, plan_name)
+          Importer.import_csv(path, plan_name, socket.assigns.current_scope.user)
         end)
 
       socket =

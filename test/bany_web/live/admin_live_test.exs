@@ -3,6 +3,8 @@ defmodule BanyWeb.AdminLiveTest do
 
   import Phoenix.LiveViewTest
 
+  setup :register_and_log_in_user
+
   describe "Admin page" do
     test "renders the import form and clear section", %{conn: conn} do
       {:ok, _live, html} = live(conn, ~p"/admin")

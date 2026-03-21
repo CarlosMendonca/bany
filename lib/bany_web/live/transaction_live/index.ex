@@ -7,7 +7,7 @@ defmodule BanyWeb.TransactionLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_plan={@current_plan}>
+    <Layouts.app flash={@flash} current_plan={@current_plan} current_scope={@current_scope}>
       <.header>
         Listing Transactions
         <:actions>
@@ -41,6 +41,9 @@ defmodule BanyWeb.TransactionLive.Index do
             (none)
           <% end %>
         </:col>
+        <:col :let={{_id, transaction}} label="Payee">
+          {if transaction.payee, do: transaction.payee.name, else: ""}
+        </:col>
         <:col :let={{_id, transaction}} label="Memo">{transaction.memo}</:col>
         <:col :let={{_id, transaction}} label="Amount">{transaction.amount}</:col>
         <:action :let={{_id, transaction}}>
@@ -68,8 +71,8 @@ defmodule BanyWeb.TransactionLive.Index do
 
     transactions =
       if current_plan,
-        do: Ledger.list_transactions_for_plan(current_plan.id) |> Repo.preload([:category, :account]),
-        else: Ledger.list_transactions() |> Repo.preload([:category, :account])
+        do: Ledger.list_transactions_for_plan(current_plan.id) |> Repo.preload([:category, :account, :payee]),
+        else: Ledger.list_transactions() |> Repo.preload([:category, :account, :payee])
 
     {:ok,
      socket

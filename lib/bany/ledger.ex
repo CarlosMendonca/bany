@@ -8,6 +8,7 @@ defmodule Bany.Ledger do
 
   alias Bany.Ledger.Account
   alias Bany.Ledger.Transaction
+  alias Bany.Ledger.Payee
 
   @doc """
   Returns the list of transactions.
@@ -130,6 +131,13 @@ defmodule Bany.Ledger do
     |> Repo.all()
   end
 
+  def list_accounts_for_user(user_id) do
+    from(a in Account,
+      join: ua in "user_accounts", on: ua.account_id == a.id and ua.user_id == ^user_id
+    )
+    |> Repo.all()
+  end
+
   @doc """
   Gets a single account.
 
@@ -158,10 +166,11 @@ defmodule Bany.Ledger do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_account(attrs) do
-    %Account{}
-    |> Account.changeset(attrs)
-    |> Repo.insert()
+  def create_account(attrs, user) do
+    with {:ok, account} <- %Account{} |> Account.changeset(attrs) |> Repo.insert() do
+      Repo.insert_all("user_accounts", [%{user_id: user.id, account_id: account.id}])
+      {:ok, account}
+    end
   end
 
   @doc """
@@ -211,8 +220,49 @@ defmodule Bany.Ledger do
     Account.changeset(account, attrs)
   end
 
+  def list_payees do
+    Repo.all(Payee)
+  end
+
+  def list_payees_for_plan(plan_id) do
+    from(p in Payee,
+      join: t in Transaction, on: t.payee_id == p.id,
+      join: pa in "plan_accounts", on: pa.account_id == t.account_id and pa.plan_id == ^plan_id,
+      distinct: true
+    )
+    |> Repo.all()
+  end
+
+  def get_payee!(id), do: Repo.get!(Payee, id)
+
+  def create_payee(attrs) do
+    %Payee{}
+    |> Payee.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def change_payee(%Payee{} = payee, attrs \\ %{}) do
+    Payee.changeset(payee, attrs)
+  end
+
+  def find_or_create_payee_by_name(name) when is_binary(name) and byte_size(name) > 0 do
+    case Repo.get_by(Payee, name: name) do
+      nil ->
+        case Repo.insert(Payee.changeset(%Payee{}, %{name: name})) do
+          {:ok, payee} -> payee
+          {:error, _} -> nil
+        end
+
+      payee ->
+        payee
+    end
+  end
+
+  def find_or_create_payee_by_name(_), do: nil
+
   def delete_all do
     Repo.delete_all(Transaction)
+    Repo.delete_all(Payee)
     Repo.delete_all(Account)
   end
 end

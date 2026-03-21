@@ -7,6 +7,9 @@ defmodule BanyWeb.TransactionLiveTest do
   @create_attrs %{date: "2025-07-06", memo: "some memo", amount: "120.5"}
   @update_attrs %{date: "2025-07-07", memo: "some updated memo", amount: "456.7"}
   @invalid_attrs %{date: nil, memo: nil, amount: nil}
+
+  setup :register_and_log_in_user
+
   defp create_transaction(_) do
     transaction = transaction_fixture()
 

@@ -7,7 +7,7 @@ defmodule BanyWeb.TransactionLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_plan={@current_plan}>
+    <Layouts.app flash={@flash} current_plan={@current_plan} current_scope={@current_scope}>
       <.header>
         Transaction {@transaction.id}
         <:subtitle>This is a transaction record from your database.</:subtitle>
@@ -22,6 +22,9 @@ defmodule BanyWeb.TransactionLive.Show do
       </.header>
 
       <.list>
+        <:item title="Payee">
+          {if @transaction.payee, do: @transaction.payee.name, else: "(none)"}
+        </:item>
         <:item title="Memo">{@transaction.memo}</:item>
         <:item title="Date">{@transaction.date}</:item>
         <:item title="Amount">{@transaction.amount}</:item>
@@ -53,7 +56,7 @@ defmodule BanyWeb.TransactionLive.Show do
     {:ok,
      socket
      |> assign(:page_title, "Show Transaction")
-     |> assign(:transaction, Ledger.get_transaction!(id) |> Repo.preload([:category, :account]))}
+     |> assign(:transaction, Ledger.get_transaction!(id) |> Repo.preload([:category, :account, :payee]))}
   end
 
   defp transactions_path(nil), do: ~p"/transactions"

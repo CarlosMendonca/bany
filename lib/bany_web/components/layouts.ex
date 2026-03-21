@@ -57,6 +57,14 @@ defmodule BanyWeb.Layouts do
             <li><a href={~p"/plans/#{@current_plan}/accounts"} class="btn btn-ghost">Accounts</a></li>
           <% end %>
           <li><a href={~p"/admin"} class="btn btn-ghost">Admin</a></li>
+          <%= if @current_scope && @current_scope.user do %>
+            <li><span class="text-sm opacity-60">{@current_scope.user.email}</span></li>
+            <li>
+              <.link href={~p"/users/log-out"} method="delete" class="btn btn-ghost btn-sm">
+                Log out
+              </.link>
+            </li>
+          <% end %>
           <li><.theme_toggle /></li>
         </ul>
       </div>

@@ -7,6 +7,9 @@ defmodule BanyWeb.CategoryLiveTest do
   @create_attrs %{name: "some name"}
   @update_attrs %{name: "some updated name"}
   @invalid_attrs %{name: nil}
+
+  setup :register_and_log_in_user
+
   defp create_category(_) do
     category = category_fixture()
 

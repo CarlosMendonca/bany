@@ -7,7 +7,7 @@ defmodule BanyWeb.AccountLive.Form do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_plan={@current_plan}>
+    <Layouts.app flash={@flash} current_plan={@current_plan} current_scope={@current_scope}>
       <.header>
         {@page_title}
         <:subtitle>Use this form to manage account records in your database.</:subtitle>
@@ -77,7 +77,7 @@ defmodule BanyWeb.AccountLive.Form do
   end
 
   defp save_account(socket, :new, account_params) do
-    case Ledger.create_account(account_params) do
+    case Ledger.create_account(account_params, socket.assigns.current_scope.user) do
       {:ok, account} ->
         if socket.assigns.current_plan do
           Bany.Repo.insert_all(

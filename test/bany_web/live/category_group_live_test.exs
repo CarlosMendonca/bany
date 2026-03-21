@@ -8,8 +8,10 @@ defmodule BanyWeb.CategoryGroupLiveTest do
   @update_attrs %{name: "some updated name"}
   @invalid_attrs %{name: nil}
 
-  defp create_category_group(_) do
-    category_group = category_group_fixture()
+  setup :register_and_log_in_user
+
+  defp create_category_group(%{user: user}) do
+    category_group = category_group_fixture(%{}, user)
     %{category_group: category_group, plan_id: category_group.plan_id}
   end
 

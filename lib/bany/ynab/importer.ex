@@ -13,7 +13,8 @@ defmodule Bany.YNAB.Importer do
 
   alias Bany.Repo
   alias Bany.Budget.{Plan, CategoryGroup, Category}
-  alias Bany.Ledger.{Account, Transaction}
+  alias Bany.Ledger.{Account, Transaction, Payee}
+  alias Bany.Ledger
   import Ecto.Query
 
   @doc """
@@ -34,8 +35,9 @@ defmodule Bany.YNAB.Importer do
         categories:      %{created: 18,   failed: 0}
       }
   """
-  def import_csv(file_path, plan_name) do
+  def import_csv(file_path, plan_name, user) do
     plan = find_or_create_plan(plan_name)
+    Repo.insert_all("user_plans", [%{user_id: user.id, plan_id: plan.id}], on_conflict: :nothing)
 
     rows =
       file_path
@@ -48,7 +50,7 @@ defmodule Bany.YNAB.Importer do
       |> Enum.with_index(1)
       |> Enum.reduce({initial_stats(length(rows)), empty_cache()}, fn {row, row_num},
                                                                        {stats, cache} ->
-        case import_row(row, plan, cache, stats) do
+        case import_row(row, plan, user, cache, stats) do
           {:ok, new_cache, new_stats} ->
             {new_stats, new_cache}
 
@@ -72,23 +74,24 @@ defmodule Bany.YNAB.Importer do
     }
   end
 
-  defp empty_cache, do: %{accounts: %{}, groups: %{}, categories: %{}}
+  defp empty_cache, do: %{accounts: %{}, groups: %{}, categories: %{}, payees: %{}}
 
-  defp import_row(row, plan, cache, stats) do
+  defp import_row(row, plan, user, cache, stats) do
     try do
-      [account_name, _flag, date_str, payee, _combined, group_name, category_name, memo,
+      [account_name, _flag, date_str, payee_name, _combined, group_name, category_name, memo,
        outflow_str, inflow_str, _cleared] = row
 
-      with {:ok, account, cache, stats} <- find_or_create_account(account_name, plan, cache, stats),
+      with {:ok, account, cache, stats} <- find_or_create_account(account_name, plan, user, cache, stats),
            {:ok, category_id, cache, stats} <-
-             resolve_category(group_name, category_name, plan, cache, stats) do
+             resolve_category(group_name, category_name, plan, cache, stats),
+           {payee_id, cache} <- resolve_payee(payee_name, cache) do
         case Repo.insert(%Transaction{
                date: parse_date(date_str),
-               payee: payee,
                memo: memo,
                amount: parse_amount(inflow_str, outflow_str),
                account_id: account.id,
-               category_id: category_id
+               category_id: category_id,
+               payee_id: payee_id
              }) do
           {:ok, _} ->
             {:ok, cache, update_in(stats.transactions.imported, &(&1 + 1))}
@@ -99,6 +102,20 @@ defmodule Bany.YNAB.Importer do
       end
     rescue
       e -> {:error, Exception.message(e), cache, stats}
+    end
+  end
+
+  defp resolve_payee("", cache), do: {nil, cache}
+
+  defp resolve_payee(name, cache) do
+    case Map.get(cache.payees, name) do
+      nil ->
+        payee = Ledger.find_or_create_payee_by_name(name)
+        id = if payee, do: payee.id, else: nil
+        {id, put_in(cache, [:payees, name], id)}
+
+      id ->
+        {id, cache}
     end
   end
 
@@ -125,7 +142,7 @@ defmodule Bany.YNAB.Importer do
     end
   end
 
-  defp find_or_create_account(name, plan, cache, stats) do
+  defp find_or_create_account(name, plan, user, cache, stats) do
     case Map.get(cache.accounts, name) do
       nil ->
         case Repo.get_by(Account, name: name) do
@@ -133,6 +150,7 @@ defmodule Bany.YNAB.Importer do
             case Repo.insert(Account.changeset(%Account{}, %{name: name})) do
               {:ok, acc} ->
                 Repo.insert_all("plan_accounts", [%{plan_id: plan.id, account_id: acc.id}], on_conflict: :nothing)
+                Repo.insert_all("user_accounts", [%{user_id: user.id, account_id: acc.id}], on_conflict: :nothing)
                 cache = put_in(cache, [:accounts, name], acc)
                 stats = update_in(stats.accounts.created, &(&1 + 1))
                 {:ok, acc, cache, stats}
@@ -144,6 +162,7 @@ defmodule Bany.YNAB.Importer do
 
           acc ->
             Repo.insert_all("plan_accounts", [%{plan_id: plan.id, account_id: acc.id}], on_conflict: :nothing)
+            Repo.insert_all("user_accounts", [%{user_id: user.id, account_id: acc.id}], on_conflict: :nothing)
             {:ok, acc, put_in(cache, [:accounts, name], acc), stats}
         end
 

@@ -7,7 +7,7 @@ defmodule BanyWeb.CategoryGroupLive.Form do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_plan={@current_plan}>
+    <Layouts.app flash={@flash} current_plan={@current_plan} current_scope={@current_scope}>
       <.header>
         {@page_title}
         <:subtitle>Use this form to manage category_group records in your database.</:subtitle>

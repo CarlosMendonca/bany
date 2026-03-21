@@ -1,6 +1,8 @@
 defmodule BanyWeb.Router do
   use BanyWeb, :router
 
+  import BanyWeb.UserAuth
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -8,6 +10,7 @@ defmodule BanyWeb.Router do
     plug :put_root_layout, html: {BanyWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug :fetch_current_scope_for_user
   end
 
   pipeline :api do
@@ -19,8 +22,12 @@ defmodule BanyWeb.Router do
 
     get "/", PageController, :home
 
-    # Accessible without a plan
-    live_session :default, on_mount: {BanyWeb.PlanContext, :default} do
+    # Accessible without a plan (requires login)
+    live_session :default,
+      on_mount: [
+        {BanyWeb.UserAuth, :ensure_authenticated},
+        {BanyWeb.PlanContext, :default}
+      ] do
       live "/categories", CategoryLive.Index, :index
       live "/categories/new", CategoryLive.Form, :new
       live "/categories/:id", CategoryLive.Show, :show
@@ -39,8 +46,12 @@ defmodule BanyWeb.Router do
       live "/admin", AdminLive, :admin
     end
 
-    # Require a valid plan — redirect to /plans if missing/invalid
-    live_session :require_plan, on_mount: {BanyWeb.PlanContext, :require_plan} do
+    # Require a valid plan — redirect to /plans if missing/invalid (requires login)
+    live_session :require_plan,
+      on_mount: [
+        {BanyWeb.UserAuth, :ensure_authenticated},
+        {BanyWeb.PlanContext, :require_plan}
+      ] do
       live "/accounts", AccountLive.Index, :index
       live "/accounts/new", AccountLive.Form, :new
       live "/accounts/:id", AccountLive.Show, :show
@@ -95,5 +106,31 @@ defmodule BanyWeb.Router do
       live_dashboard "/dashboard", metrics: BanyWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
+  end
+
+  ## Authentication routes
+
+  scope "/", BanyWeb do
+    pipe_through [:browser, :redirect_if_user_is_authenticated]
+
+    get "/users/register", UserRegistrationController, :new
+    post "/users/register", UserRegistrationController, :create
+  end
+
+  scope "/", BanyWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    get "/users/settings", UserSettingsController, :edit
+    put "/users/settings", UserSettingsController, :update
+    get "/users/settings/confirm-email/:token", UserSettingsController, :confirm_email
+  end
+
+  scope "/", BanyWeb do
+    pipe_through [:browser]
+
+    get "/users/log-in", UserSessionController, :new
+    get "/users/log-in/:token", UserSessionController, :confirm
+    post "/users/log-in", UserSessionController, :create
+    delete "/users/log-out", UserSessionController, :delete
   end
 end

@@ -7,6 +7,7 @@ defmodule Bany.Budget.Plan do
 
     many_to_many :accounts, Bany.Ledger.Account, join_through: "plan_accounts"
     many_to_many :categories, Bany.Budget.Category, join_through: "plan_categories"
+    many_to_many :users, Bany.Accounts.User, join_through: "user_plans"
 
     timestamps(type: :utc_datetime)
   end

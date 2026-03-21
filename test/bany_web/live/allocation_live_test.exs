@@ -8,8 +8,10 @@ defmodule BanyWeb.AllocationLiveTest do
   @update_attrs %{amount: "456.7", allocated_on: "2025-08-01"}
   @invalid_attrs %{amount: nil, allocated_on: nil}
 
-  defp create_allocation(_) do
-    allocation = allocation_fixture()
+  setup :register_and_log_in_user
+
+  defp create_allocation(%{user: user}) do
+    allocation = allocation_fixture(%{}, user)
     %{allocation: allocation, plan_id: allocation.plan_id}
   end
 

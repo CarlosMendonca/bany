@@ -19,15 +19,15 @@ defmodule Bany.BudgetFixtures do
   end
 
   @doc """
-  Generate a plan.
+  Generate a plan. Accepts an optional user (or creates one) for ownership.
   """
-  def plan_fixture(attrs \\ %{}) do
+  def plan_fixture(attrs \\ %{}, user \\ nil) do
+    user = user || Bany.AccountsFixtures.user_fixture()
+
     {:ok, plan} =
       attrs
-      |> Enum.into(%{
-        name: "some name"
-      })
-      |> Bany.Budget.create_plan()
+      |> Enum.into(%{name: "some name"})
+      |> Bany.Budget.create_plan(user)
 
     plan
   end
@@ -35,8 +35,8 @@ defmodule Bany.BudgetFixtures do
   @doc """
   Generate a category_group. Creates a plan automatically if plan_id is not provided.
   """
-  def category_group_fixture(attrs \\ %{}) do
-    plan_id = Map.get(attrs, :plan_id) || plan_fixture().id
+  def category_group_fixture(attrs \\ %{}, user \\ nil) do
+    plan_id = Map.get(attrs, :plan_id) || plan_fixture(%{}, user).id
 
     {:ok, category_group} =
       attrs
@@ -53,8 +53,8 @@ defmodule Bany.BudgetFixtures do
   @doc """
   Generate an allocation. Creates a plan and category automatically if not provided.
   """
-  def allocation_fixture(attrs \\ %{}) do
-    plan_id = Map.get(attrs, :plan_id) || plan_fixture().id
+  def allocation_fixture(attrs \\ %{}, user \\ nil) do
+    plan_id = Map.get(attrs, :plan_id) || plan_fixture(%{}, user).id
     category_id = Map.get(attrs, :category_id) || category_fixture().id
 
     # Ensure the category is linked to the plan so form selects populate correctly

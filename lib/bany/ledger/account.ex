@@ -6,6 +6,7 @@ defmodule Bany.Ledger.Account do
     field :name, :string
     has_many :transactions, Bany.Ledger.Transaction
     many_to_many :plans, Bany.Budget.Plan, join_through: "plan_accounts"
+    many_to_many :users, Bany.Accounts.User, join_through: "user_accounts"
 
     timestamps(type: :utc_datetime)
   end

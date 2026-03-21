@@ -6,7 +6,7 @@ defmodule BanyWeb.PlanLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_plan={@current_plan}>
+    <Layouts.app flash={@flash} current_plan={@current_plan} current_scope={@current_scope}>
       <.header>
         Plan {@plan.id}
         <:subtitle>This is a plan record from your database.</:subtitle>

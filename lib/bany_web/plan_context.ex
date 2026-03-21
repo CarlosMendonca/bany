@@ -3,7 +3,7 @@ defmodule BanyWeb.PlanContext do
   alias Bany.Budget
 
   def on_mount(:require_plan, params, _session, socket) do
-    plans = Budget.list_plans()
+    plans = Budget.list_plans_for_user(socket.assigns.current_scope.user.id)
     current_plan = resolve_current_plan(plans, params)
     socket = assign(socket, current_plan: current_plan, plans: plans)
 
@@ -15,7 +15,7 @@ defmodule BanyWeb.PlanContext do
   end
 
   def on_mount(:default, params, _session, socket) do
-    plans = Budget.list_plans()
+    plans = Budget.list_plans_for_user(socket.assigns.current_scope.user.id)
     {:cont, assign(socket, current_plan: resolve_current_plan(plans, params), plans: plans)}
   end
 

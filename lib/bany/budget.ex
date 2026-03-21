@@ -213,6 +213,13 @@ defmodule Bany.Budget do
     Repo.all(Plan)
   end
 
+  def list_plans_for_user(user_id) do
+    from(p in Plan,
+      join: up in "user_plans", on: up.plan_id == p.id and up.user_id == ^user_id
+    )
+    |> Repo.all()
+  end
+
   @doc """
   Gets a single plan.
 
@@ -241,10 +248,11 @@ defmodule Bany.Budget do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_plan(attrs) do
-    %Plan{}
-    |> Plan.changeset(attrs)
-    |> Repo.insert()
+  def create_plan(attrs, user) do
+    with {:ok, plan} <- %Plan{} |> Plan.changeset(attrs) |> Repo.insert() do
+      Repo.insert_all("user_plans", [%{user_id: user.id, plan_id: plan.id}])
+      {:ok, plan}
+    end
   end
 
   @doc """

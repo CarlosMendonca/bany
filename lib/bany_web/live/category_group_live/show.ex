@@ -6,7 +6,7 @@ defmodule BanyWeb.CategoryGroupLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_plan={@current_plan}>
+    <Layouts.app flash={@flash} current_plan={@current_plan} current_scope={@current_scope}>
       <.header>
         Category group {@category_group.id}
         <:subtitle>This is a category_group record from your database.</:subtitle>

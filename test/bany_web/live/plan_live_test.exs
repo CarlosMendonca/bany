@@ -7,9 +7,11 @@ defmodule BanyWeb.PlanLiveTest do
   @create_attrs %{name: "some name"}
   @update_attrs %{name: "some updated name"}
   @invalid_attrs %{name: nil}
-  defp create_plan(_) do
-    plan = plan_fixture()
 
+  setup :register_and_log_in_user
+
+  defp create_plan(%{user: user}) do
+    plan = plan_fixture(%{}, user)
     %{plan: plan}
   end
 
