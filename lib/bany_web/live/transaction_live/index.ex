@@ -42,7 +42,11 @@ defmodule BanyWeb.TransactionLive.Index do
           <% end %>
         </:col>
         <:col :let={{_id, transaction}} label="Payee">
-          {if transaction.payee, do: transaction.payee.name, else: ""}
+          <%= if transaction.payee do %>
+            <.link navigate={payee_path(@current_plan, transaction.payee)}>
+              {transaction.payee.name}
+            </.link>
+          <% end %>
         </:col>
         <:col :let={{_id, transaction}} label="Memo">{transaction.memo}</:col>
         <:col :let={{_id, transaction}} label="Amount">{transaction.amount}</:col>
@@ -87,6 +91,9 @@ defmodule BanyWeb.TransactionLive.Index do
 
     {:noreply, stream_delete(socket, :transactions, transaction)}
   end
+
+  defp payee_path(nil, p), do: ~p"/payees/#{p}"
+  defp payee_path(plan, p), do: ~p"/plans/#{plan}/payees/#{p}"
 
   defp transactions_new_path(nil), do: ~p"/transactions/new"
   defp transactions_new_path(plan), do: ~p"/plans/#{plan}/transactions/new"

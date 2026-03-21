@@ -245,6 +245,14 @@ defmodule Bany.Ledger do
     Payee.changeset(payee, attrs)
   end
 
+  def update_payee(%Payee{} = payee, attrs) do
+    payee |> Payee.changeset(attrs) |> Repo.update()
+  end
+
+  def delete_payee(%Payee{} = payee) do
+    Repo.delete(payee)
+  end
+
   def find_or_create_payee_by_name(name) when is_binary(name) and byte_size(name) > 0 do
     case Repo.get_by(Payee, name: name) do
       nil ->

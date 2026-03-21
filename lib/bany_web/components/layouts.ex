@@ -48,6 +48,7 @@ defmodule BanyWeb.Layouts do
             </span>
           </li>
           <li><a href={~p"/plans"} class="btn btn-ghost">Plans</a></li>
+          <li><a href={payees_href(@current_plan)} class="btn btn-ghost">Payees</a></li>
           <li><a href={transactions_href(@current_plan)} class="btn btn-ghost">Transactions</a></li>
           <li><a href={categories_href(@current_plan)} class="btn btn-ghost">Categories</a></li>
           <%= if @current_plan do %>
@@ -85,6 +86,9 @@ defmodule BanyWeb.Layouts do
 
   defp categories_href(nil), do: ~p"/categories"
   defp categories_href(plan), do: ~p"/plans/#{plan}/categories"
+
+  defp payees_href(nil), do: ~p"/payees"
+  defp payees_href(plan), do: ~p"/plans/#{plan}/payees"
 
   @doc """
   Shows the flash group with standard titles and content.
