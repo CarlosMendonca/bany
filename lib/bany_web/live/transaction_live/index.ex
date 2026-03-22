@@ -153,7 +153,7 @@ defmodule BanyWeb.TransactionLive.Index do
             {@total_count} transactions
           <% else %>
             {@filtered_total} of {@total_count} transactions match
-          <% end %>
+          <% end %><span id="selected-count-display" class="hidden">, <span id="selected-count-n">0</span> selected</span>
         </span>
 
         <%= if @total_pages > 1 do %>
@@ -169,9 +169,10 @@ defmodule BanyWeb.TransactionLive.Index do
         <% end %>
       </div>
 
-      <table class="table table-zebra">
+      <table id="transactions-table" phx-hook="TransactionTable" class="table table-zebra">
         <thead>
           <tr>
+            <th class="w-0"><span class="sr-only">Select</span></th>
             <th><.col_header col={:account} sort_by={@sort_by} sort_dir={@sort_dir}>Account</.col_header></th>
             <th><.col_header col={:date} sort_by={@sort_by} sort_dir={@sort_dir}>Date</.col_header></th>
             <th><.col_header col={:category} sort_by={@sort_by} sort_dir={@sort_dir}>Category</.col_header></th>
@@ -182,7 +183,10 @@ defmodule BanyWeb.TransactionLive.Index do
           </tr>
         </thead>
         <tbody id="transactions" phx-update="stream">
-          <tr :for={{id, transaction} <- @streams.transactions} id={id}>
+          <tr :for={{id, transaction} <- @streams.transactions} id={id} data-id={transaction.id}>
+            <td class="w-0">
+              <input type="checkbox" class="checkbox checkbox-sm" tabindex="-1" />
+            </td>
             <td phx-click={JS.navigate(transaction_path(@current_plan, transaction))} class="hover:cursor-pointer">
               <%= if transaction.account do %>
                 <.link navigate={if @current_plan, do: ~p"/plans/#{@current_plan}/accounts/#{transaction.account}", else: ~p"/accounts/#{transaction.account}"}>
@@ -223,17 +227,17 @@ defmodule BanyWeb.TransactionLive.Index do
                   <.link navigate={transaction_path(@current_plan, transaction)}>Show</.link>
                 </div>
                 <.link navigate={transaction_edit_path(@current_plan, transaction)}>Edit</.link>
-                <.link
-                  phx-click={JS.push("delete", value: %{id: transaction.id}) |> hide("##{id}")}
-                  data-confirm="Are you sure?"
-                >
-                  Delete
-                </.link>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
+
+      <div id="delete-selected-bar" class="mt-2">
+        <button id="delete-selected-btn" class="btn btn-error btn-sm" disabled>
+          Delete selected (<span id="delete-selected-count">0</span>)
+        </button>
+      </div>
     </Layouts.app>
     """
   end
@@ -275,29 +279,29 @@ defmodule BanyWeb.TransactionLive.Index do
 
   @impl true
   def handle_event("search", %{"query" => q}, socket) do
-    {:noreply, socket |> assign(:query, String.trim(q)) |> assign(:page, 1) |> reload_transactions()}
+    {:noreply, socket |> assign(:query, String.trim(q)) |> assign(:page, 1) |> reload_transactions_with_reset()}
   end
 
   def handle_event("toggle_category", %{"id" => id_str}, socket) do
     id = String.to_integer(id_str)
     all_ids = Enum.map(socket.assigns.categories, & &1.id)
     new_ids = toggle_id(socket.assigns.selected_category_ids, id, all_ids)
-    {:noreply, socket |> assign(:selected_category_ids, new_ids) |> assign(:page, 1) |> reload_transactions()}
+    {:noreply, socket |> assign(:selected_category_ids, new_ids) |> assign(:page, 1) |> reload_transactions_with_reset()}
   end
 
   def handle_event("select_all_categories", _params, socket) do
-    {:noreply, socket |> assign(:selected_category_ids, nil) |> assign(:page, 1) |> reload_transactions()}
+    {:noreply, socket |> assign(:selected_category_ids, nil) |> assign(:page, 1) |> reload_transactions_with_reset()}
   end
 
   def handle_event("toggle_account", %{"id" => id_str}, socket) do
     id = String.to_integer(id_str)
     all_ids = Enum.map(socket.assigns.accounts, & &1.id)
     new_ids = toggle_id(socket.assigns.selected_account_ids, id, all_ids)
-    {:noreply, socket |> assign(:selected_account_ids, new_ids) |> assign(:page, 1) |> reload_transactions()}
+    {:noreply, socket |> assign(:selected_account_ids, new_ids) |> assign(:page, 1) |> reload_transactions_with_reset()}
   end
 
   def handle_event("select_all_accounts", _params, socket) do
-    {:noreply, socket |> assign(:selected_account_ids, nil) |> assign(:page, 1) |> reload_transactions()}
+    {:noreply, socket |> assign(:selected_account_ids, nil) |> assign(:page, 1) |> reload_transactions_with_reset()}
   end
 
   def handle_event("filter_date", params, socket) do
@@ -314,7 +318,7 @@ defmodule BanyWeb.TransactionLive.Index do
      |> assign(:date_from, from)
      |> assign(:date_to, to)
      |> assign(:page, 1)
-     |> reload_transactions()}
+     |> reload_transactions_with_reset()}
   end
 
   def handle_event("reset_filters", _params, socket) do
@@ -327,7 +331,7 @@ defmodule BanyWeb.TransactionLive.Index do
      |> assign(:date_from, nil)
      |> assign(:date_to, nil)
      |> assign(:page, 1)
-     |> reload_transactions()}
+     |> reload_transactions_with_reset()}
   end
 
   @sortable_columns [:account, :date, :category, :payee, :memo, :amount]
@@ -346,7 +350,7 @@ defmodule BanyWeb.TransactionLive.Index do
        |> assign(:sort_by, col)
        |> assign(:sort_dir, new_dir)
        |> assign(:page, 1)
-       |> reload_transactions()}
+       |> reload_transactions_with_reset()}
     else
       {:noreply, socket}
     end
@@ -360,10 +364,16 @@ defmodule BanyWeb.TransactionLive.Index do
     {:noreply, socket |> assign(:page, min(socket.assigns.total_pages, socket.assigns.page + 1)) |> reload_transactions()}
   end
 
-  def handle_event("delete", %{"id" => id}, socket) do
-    transaction = Ledger.get_transaction!(id)
-    {:ok, _} = Ledger.delete_transaction(transaction)
-    {:noreply, stream_delete(socket, :transactions, transaction)}
+  def handle_event("delete_selected", %{"ids" => ids}, socket) when is_list(ids) do
+    int_ids = Enum.map(ids, &String.to_integer/1)
+    Ledger.delete_transactions(int_ids)
+    {:noreply, socket |> assign(:page, 1) |> reload_transactions()}
+  end
+
+  defp reload_transactions_with_reset(socket) do
+    socket
+    |> push_event("clear-table-selection", %{})
+    |> reload_transactions()
   end
 
   defp reload_transactions(socket) do

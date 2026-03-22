@@ -227,6 +227,11 @@ defmodule Bany.Ledger do
     Repo.delete(transaction)
   end
 
+  def delete_transactions(ids) when is_list(ids) do
+    from(t in Transaction, where: t.id in ^ids)
+    |> Repo.delete_all()
+  end
+
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking transaction changes.
 

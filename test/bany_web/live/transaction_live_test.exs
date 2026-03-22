@@ -75,10 +75,11 @@ defmodule BanyWeb.TransactionLiveTest do
       assert html =~ "Transaction updated successfully"
     end
 
-    test "deletes transaction in listing", %{conn: conn, transaction: transaction} do
+    test "deletes transaction in listing via batch delete", %{conn: conn, transaction: transaction} do
       {:ok, index_live, _html} = live(conn, ~p"/transactions")
 
-      assert index_live |> element("#transactions-#{transaction.id} a", "Delete") |> render_click()
+      assert has_element?(index_live, "#transactions-#{transaction.id}")
+      index_live |> render_hook("delete_selected", %{"ids" => [to_string(transaction.id)]})
       refute has_element?(index_live, "#transactions-#{transaction.id}")
     end
   end
