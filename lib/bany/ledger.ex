@@ -76,6 +76,8 @@ defmodule Bany.Ledger do
   def filter_transactions(opts) do
     page      = Map.get(opts, :page, 1)
     page_size = Map.get(opts, :page_size, 50)
+    sort_by   = Map.get(opts, :sort_by, :date)
+    sort_dir  = Map.get(opts, :sort_dir, :desc)
 
     Transaction
     |> maybe_scope_to_plan(opts[:plan_id])
@@ -83,7 +85,7 @@ defmodule Bany.Ledger do
     |> maybe_filter_categories(opts[:category_ids])
     |> maybe_filter_accounts(opts[:account_ids])
     |> maybe_filter_date(opts[:date_from], opts[:date_to])
-    |> order_by([t], desc: t.date, desc: t.id)
+    |> apply_sort(sort_by, sort_dir)
     |> limit(^page_size)
     |> offset(^((page - 1) * page_size))
     |> Repo.all()
@@ -100,6 +102,31 @@ defmodule Bany.Ledger do
     |> Repo.aggregate(:count)
   end
 
+  defp apply_sort(q, :date, dir), do: order_by(q, [t], [{^dir, t.date}, {:desc, t.id}])
+  defp apply_sort(q, :amount, dir), do: order_by(q, [t], [{^dir, t.amount}, {:desc, t.id}])
+  defp apply_sort(q, :memo, dir), do: order_by(q, [t], [{^dir, t.memo}, {:desc, t.id}])
+
+  defp apply_sort(q, :payee, dir) do
+    q =
+      if Ecto.Query.has_named_binding?(q, :payee),
+        do: q,
+        else: from(t in q, left_join: p in assoc(t, :payee), as: :payee)
+
+    order_by(q, [t, payee: p], [{^dir, p.name}, {:desc, t.id}])
+  end
+
+  defp apply_sort(q, :account, dir) do
+    q = from(t in q, left_join: a in assoc(t, :account), as: :account)
+    order_by(q, [t, account: a], [{^dir, a.name}, {:desc, t.id}])
+  end
+
+  defp apply_sort(q, :category, dir) do
+    q = from(t in q, left_join: c in assoc(t, :category), as: :category)
+    order_by(q, [t, category: c], [{^dir, c.name}, {:desc, t.id}])
+  end
+
+  defp apply_sort(q, _, _), do: order_by(q, [t], [desc: t.date, desc: t.id])
+
   defp maybe_scope_to_plan(q, nil), do: q
 
   defp maybe_scope_to_plan(q, plan_id) do
@@ -114,7 +141,7 @@ defmodule Bany.Ledger do
     like = "%#{term}%"
 
     from t in q,
-      left_join: p in assoc(t, :payee),
+      left_join: p in assoc(t, :payee), as: :payee,
       where:
         ilike(t.memo, ^like) or
           ilike(p.name, ^like) or

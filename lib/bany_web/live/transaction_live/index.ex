@@ -169,54 +169,71 @@ defmodule BanyWeb.TransactionLive.Index do
         <% end %>
       </div>
 
-      <.table
-        id="transactions"
-        rows={@streams.transactions}
-        row_click={fn {_id, transaction} -> JS.navigate(transaction_path(@current_plan, transaction)) end}
-      >
-        <:col :let={{_id, transaction}} label="Account">
-          <%= if transaction.account do %>
-            <.link navigate={if @current_plan, do: ~p"/plans/#{@current_plan}/accounts/#{transaction.account}", else: ~p"/accounts/#{transaction.account}"}>
-              {transaction.account.name}
-            </.link>
-          <% else %>
-            (none)
-          <% end %>
-        </:col>
-        <:col :let={{_id, transaction}} label="Date">{transaction.date}</:col>
-        <:col :let={{_id, transaction}} label="Category">
-          <%= if transaction.category do %>
-            <.link navigate={if @current_plan, do: ~p"/plans/#{@current_plan}/categories/#{transaction.category}", else: ~p"/categories/#{transaction.category}"}>
-              {transaction.category.name}
-            </.link>
-          <% else %>
-            (none)
-          <% end %>
-        </:col>
-        <:col :let={{_id, transaction}} label="Payee">
-          <%= if transaction.payee do %>
-            <.link navigate={payee_path(@current_plan, transaction.payee)}>
-              {highlight(transaction.payee.name, @query)}
-            </.link>
-          <% end %>
-        </:col>
-        <:col :let={{_id, transaction}} label="Memo">{highlight(transaction.memo, @query)}</:col>
-        <:col :let={{_id, transaction}} label="Amount">{highlight(to_string(transaction.amount), @query)}</:col>
-        <:action :let={{_id, transaction}}>
-          <div class="sr-only">
-            <.link navigate={transaction_path(@current_plan, transaction)}>Show</.link>
-          </div>
-          <.link navigate={transaction_edit_path(@current_plan, transaction)}>Edit</.link>
-        </:action>
-        <:action :let={{id, transaction}}>
-          <.link
-            phx-click={JS.push("delete", value: %{id: transaction.id}) |> hide("##{id}")}
-            data-confirm="Are you sure?"
-          >
-            Delete
-          </.link>
-        </:action>
-      </.table>
+      <table class="table table-zebra">
+        <thead>
+          <tr>
+            <th><.col_header col={:account} sort_by={@sort_by} sort_dir={@sort_dir}>Account</.col_header></th>
+            <th><.col_header col={:date} sort_by={@sort_by} sort_dir={@sort_dir}>Date</.col_header></th>
+            <th><.col_header col={:category} sort_by={@sort_by} sort_dir={@sort_dir}>Category</.col_header></th>
+            <th><.col_header col={:payee} sort_by={@sort_by} sort_dir={@sort_dir}>Payee</.col_header></th>
+            <th><.col_header col={:memo} sort_by={@sort_by} sort_dir={@sort_dir}>Memo</.col_header></th>
+            <th><.col_header col={:amount} sort_by={@sort_by} sort_dir={@sort_dir}>Amount</.col_header></th>
+            <th><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody id="transactions" phx-update="stream">
+          <tr :for={{id, transaction} <- @streams.transactions} id={id}>
+            <td phx-click={JS.navigate(transaction_path(@current_plan, transaction))} class="hover:cursor-pointer">
+              <%= if transaction.account do %>
+                <.link navigate={if @current_plan, do: ~p"/plans/#{@current_plan}/accounts/#{transaction.account}", else: ~p"/accounts/#{transaction.account}"}>
+                  {transaction.account.name}
+                </.link>
+              <% else %>
+                (none)
+              <% end %>
+            </td>
+            <td phx-click={JS.navigate(transaction_path(@current_plan, transaction))} class="hover:cursor-pointer">
+              {transaction.date}
+            </td>
+            <td phx-click={JS.navigate(transaction_path(@current_plan, transaction))} class="hover:cursor-pointer">
+              <%= if transaction.category do %>
+                <.link navigate={if @current_plan, do: ~p"/plans/#{@current_plan}/categories/#{transaction.category}", else: ~p"/categories/#{transaction.category}"}>
+                  {transaction.category.name}
+                </.link>
+              <% else %>
+                (none)
+              <% end %>
+            </td>
+            <td phx-click={JS.navigate(transaction_path(@current_plan, transaction))} class="hover:cursor-pointer">
+              <%= if transaction.payee do %>
+                <.link navigate={payee_path(@current_plan, transaction.payee)}>
+                  {highlight(transaction.payee.name, @query)}
+                </.link>
+              <% end %>
+            </td>
+            <td phx-click={JS.navigate(transaction_path(@current_plan, transaction))} class="hover:cursor-pointer">
+              {highlight(transaction.memo, @query)}
+            </td>
+            <td phx-click={JS.navigate(transaction_path(@current_plan, transaction))} class="hover:cursor-pointer">
+              {highlight(to_string(transaction.amount), @query)}
+            </td>
+            <td class="w-0 font-semibold">
+              <div class="flex gap-4">
+                <div class="sr-only">
+                  <.link navigate={transaction_path(@current_plan, transaction)}>Show</.link>
+                </div>
+                <.link navigate={transaction_edit_path(@current_plan, transaction)}>Edit</.link>
+                <.link
+                  phx-click={JS.push("delete", value: %{id: transaction.id}) |> hide("##{id}")}
+                  data-confirm="Are you sure?"
+                >
+                  Delete
+                </.link>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </Layouts.app>
     """
   end
@@ -251,6 +268,8 @@ defmodule BanyWeb.TransactionLive.Index do
      |> assign(:total_count, total_count)
      |> assign(:page, 1)
      |> assign(:page_size, 50)
+     |> assign(:sort_by, :date)
+     |> assign(:sort_dir, :desc)
      |> reload_transactions()}
   end
 
@@ -311,6 +330,28 @@ defmodule BanyWeb.TransactionLive.Index do
      |> reload_transactions()}
   end
 
+  @sortable_columns [:account, :date, :category, :payee, :memo, :amount]
+
+  def handle_event("sort_column", %{"col" => col_str}, socket) do
+    col = String.to_existing_atom(col_str)
+
+    if col in @sortable_columns do
+      new_dir =
+        if socket.assigns.sort_by == col,
+          do: (if socket.assigns.sort_dir == :asc, do: :desc, else: :asc),
+          else: :asc
+
+      {:noreply,
+       socket
+       |> assign(:sort_by, col)
+       |> assign(:sort_dir, new_dir)
+       |> assign(:page, 1)
+       |> reload_transactions()}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("prev_page", _params, socket) do
     {:noreply, socket |> assign(:page, max(1, socket.assigns.page - 1)) |> reload_transactions()}
   end
@@ -335,7 +376,9 @@ defmodule BanyWeb.TransactionLive.Index do
       date_from: date_from,
       date_to: date_to,
       page: page,
-      page_size: page_size
+      page_size: page_size,
+      sort_by: sort_by,
+      sort_dir: sort_dir
     } = socket.assigns
 
     {resolved_from, resolved_to} =
@@ -349,7 +392,9 @@ defmodule BanyWeb.TransactionLive.Index do
       date_from: resolved_from,
       date_to: resolved_to,
       page: page,
-      page_size: page_size
+      page_size: page_size,
+      sort_by: sort_by,
+      sort_dir: sort_dir
     }
 
     filtered_total = Ledger.count_filtered_transactions(filter_opts)
@@ -360,6 +405,23 @@ defmodule BanyWeb.TransactionLive.Index do
     |> assign(:filtered_total, filtered_total)
     |> assign(:total_pages, total_pages)
     |> stream(:transactions, transactions, reset: true)
+  end
+
+  attr :col, :atom, required: true
+  attr :sort_by, :atom, required: true
+  attr :sort_dir, :atom, required: true
+  slot :inner_block, required: true
+
+  defp col_header(assigns) do
+    ~H"""
+    <button phx-click="sort_column" phx-value-col={@col} class="flex items-center gap-1">
+      {render_slot(@inner_block)}
+      <.icon
+        :if={@sort_by == @col}
+        name={if @sort_dir == :asc, do: "hero-chevron-up-micro", else: "hero-chevron-down-micro"}
+      />
+    </button>
+    """
   end
 
   defp toggle_id(nil, id, all_ids), do: List.delete(all_ids, id)
