@@ -30,6 +30,40 @@ defmodule Bany.Ledger do
     |> Repo.all()
   end
 
+  def search_transactions(query) when is_binary(query) and query != "" do
+    search = "%#{query}%"
+
+    from(t in Transaction,
+      left_join: p in assoc(t, :payee),
+      where:
+        ilike(t.memo, ^search) or
+          ilike(p.name, ^search) or
+          ilike(fragment("CAST(? AS TEXT)", t.amount), ^search),
+      preload: [:category, :account, :payee]
+    )
+    |> Repo.all()
+  end
+
+  def search_transactions(_), do: list_transactions() |> Repo.preload([:category, :account, :payee])
+
+  def search_transactions_for_plan(plan_id, query) when is_binary(query) and query != "" do
+    search = "%#{query}%"
+
+    from(t in Transaction,
+      join: pa in "plan_accounts", on: pa.account_id == t.account_id and pa.plan_id == ^plan_id,
+      left_join: p in assoc(t, :payee),
+      where:
+        ilike(t.memo, ^search) or
+          ilike(p.name, ^search) or
+          ilike(fragment("CAST(? AS TEXT)", t.amount), ^search),
+      preload: [:category, :account, :payee]
+    )
+    |> Repo.all()
+  end
+
+  def search_transactions_for_plan(plan_id, _),
+    do: list_transactions_for_plan(plan_id) |> Repo.preload([:category, :account, :payee])
+
   @doc """
   Gets a single transaction.
 

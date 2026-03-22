@@ -17,6 +17,20 @@ defmodule BanyWeb.TransactionLive.Index do
         </:actions>
       </.header>
 
+      <form phx-change="search" class="flex items-center gap-2">
+        <input
+          id="transaction-search"
+          type="search"
+          name="query"
+          value={@query}
+          placeholder="Search memo, payee, amount… (press / to focus)"
+          class="input input-bordered w-full max-w-md"
+          phx-debounce="200"
+          phx-hook="FocusOnSlash"
+          autocomplete="off"
+        />
+      </form>
+
       <.table
         id="transactions"
         rows={@streams.transactions}
@@ -44,12 +58,12 @@ defmodule BanyWeb.TransactionLive.Index do
         <:col :let={{_id, transaction}} label="Payee">
           <%= if transaction.payee do %>
             <.link navigate={payee_path(@current_plan, transaction.payee)}>
-              {transaction.payee.name}
+              {highlight(transaction.payee.name, @query)}
             </.link>
           <% end %>
         </:col>
-        <:col :let={{_id, transaction}} label="Memo">{transaction.memo}</:col>
-        <:col :let={{_id, transaction}} label="Amount">{transaction.amount}</:col>
+        <:col :let={{_id, transaction}} label="Memo">{highlight(transaction.memo, @query)}</:col>
+        <:col :let={{_id, transaction}} label="Amount">{highlight(to_string(transaction.amount), @query)}</:col>
         <:action :let={{_id, transaction}}>
           <div class="sr-only">
             <.link navigate={transaction_path(@current_plan, transaction)}>Show</.link>
@@ -81,7 +95,24 @@ defmodule BanyWeb.TransactionLive.Index do
     {:ok,
      socket
      |> assign(:page_title, "Listing Transactions")
+     |> assign(:query, "")
      |> stream(:transactions, transactions)}
+  end
+
+  @impl true
+  def handle_event("search", %{"query" => query}, socket) do
+    current_plan = socket.assigns.current_plan
+    query = String.trim(query)
+
+    transactions =
+      if current_plan,
+        do: Ledger.search_transactions_for_plan(current_plan.id, query),
+        else: Ledger.search_transactions(query)
+
+    {:noreply,
+     socket
+     |> assign(:query, query)
+     |> stream(:transactions, transactions, reset: true)}
   end
 
   @impl true
@@ -90,6 +121,35 @@ defmodule BanyWeb.TransactionLive.Index do
     {:ok, _} = Ledger.delete_transaction(transaction)
 
     {:noreply, stream_delete(socket, :transactions, transaction)}
+  end
+
+  defp highlight(nil, _query), do: ""
+  defp highlight(text, query) when query in ["", nil], do: text
+
+  defp highlight(text, query) do
+    text_str = to_string(text)
+    escaped_query = Regex.escape(query)
+
+    case Regex.compile(escaped_query, [:caseless]) do
+      {:ok, regex} ->
+        parts = Regex.split(regex, text_str, include_captures: true)
+
+        html =
+          Enum.map_join(parts, fn part ->
+            safe = part |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
+
+            if part != "" and Regex.match?(regex, part) do
+              "<mark class=\"bg-yellow-200 dark:bg-yellow-800 rounded\">#{safe}</mark>"
+            else
+              safe
+            end
+          end)
+
+        Phoenix.HTML.raw(html)
+
+      {:error, _} ->
+        text
+    end
   end
 
   defp payee_path(nil, p), do: ~p"/payees/#{p}"
