@@ -51,6 +51,7 @@ Hooks.TransactionTable = {
     this.pendingCursor = null // "first" | "last" | null
 
     this.tbody = this.el.querySelector("tbody")
+    this.selectAllCb = document.getElementById("select-all-checkbox")
     this.deleteBtn = document.getElementById("delete-selected-btn")
     this.deleteCount = document.getElementById("delete-selected-count")
     this.selectedCountDisplay = document.getElementById("selected-count-display")
@@ -65,6 +66,25 @@ Hooks.TransactionTable = {
       else if (e.key === "#") { e.preventDefault(); this._deleteHandler() }
     }
     window.addEventListener("keydown", this._keyHandler)
+
+    // Select-all checkbox
+    this._selectAllHandler = () => {
+      const total = parseInt(this.el.dataset.total, 10)
+      if (this.selectedIds.size >= total && total > 0) {
+        this.selectedIds.clear()
+        this.applyVisuals()
+        this.updateDeleteBar()
+      } else {
+        this.pushEvent("select_all", {})
+      }
+    }
+    this.selectAllCb.addEventListener("click", this._selectAllHandler)
+
+    this.handleEvent("all_ids_selected", ({ ids }) => {
+      ids.forEach(id => this.selectedIds.add(String(id)))
+      this.applyVisuals()
+      this.updateDeleteBar()
+    })
 
     // Checkbox click delegation
     this._checkboxHandler = (e) => {
@@ -203,6 +223,15 @@ Hooks.TransactionTable = {
     this.deleteCount.textContent = n
     this.selectedCountDisplay.classList.toggle("hidden", n === 0)
     this.selectedCountN.textContent = n
+    this.updateSelectAll()
+  },
+
+  updateSelectAll() {
+    const total = parseInt(this.el.dataset.total, 10)
+    const n = this.selectedIds.size
+    const allSelected = n > 0 && n >= total
+    this.selectAllCb.checked = allSelected
+    this.selectAllCb.indeterminate = n > 0 && !allSelected
   },
 }
 

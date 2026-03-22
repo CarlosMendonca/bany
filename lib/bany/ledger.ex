@@ -92,6 +92,17 @@ defmodule Bany.Ledger do
     |> Repo.preload([:category, :account, :payee])
   end
 
+  def get_filtered_transaction_ids(opts) do
+    Transaction
+    |> maybe_scope_to_plan(opts[:plan_id])
+    |> maybe_search(opts[:query])
+    |> maybe_filter_categories(opts[:category_ids])
+    |> maybe_filter_accounts(opts[:account_ids])
+    |> maybe_filter_date(opts[:date_from], opts[:date_to])
+    |> select([t], t.id)
+    |> Repo.all()
+  end
+
   def count_filtered_transactions(opts) do
     Transaction
     |> maybe_scope_to_plan(opts[:plan_id])

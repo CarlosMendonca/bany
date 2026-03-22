@@ -169,10 +169,12 @@ defmodule BanyWeb.TransactionLive.Index do
         <% end %>
       </div>
 
-      <table id="transactions-table" phx-hook="TransactionTable" class="table table-zebra">
+      <table id="transactions-table" phx-hook="TransactionTable" data-total={@filtered_total} class="table table-zebra">
         <thead>
           <tr>
-            <th class="w-0"><span class="sr-only">Select</span></th>
+            <th class="w-0">
+              <input type="checkbox" id="select-all-checkbox" class="checkbox checkbox-sm" tabindex="-1" />
+            </th>
             <th><.col_header col={:account} sort_by={@sort_by} sort_dir={@sort_dir}>Account</.col_header></th>
             <th><.col_header col={:date} sort_by={@sort_by} sort_dir={@sort_dir}>Date</.col_header></th>
             <th><.col_header col={:category} sort_by={@sort_by} sort_dir={@sort_dir}>Category</.col_header></th>
@@ -364,6 +366,11 @@ defmodule BanyWeb.TransactionLive.Index do
     {:noreply, socket |> assign(:page, min(socket.assigns.total_pages, socket.assigns.page + 1)) |> reload_transactions()}
   end
 
+  def handle_event("select_all", _params, socket) do
+    ids = socket |> build_filter_opts() |> Map.delete(:page) |> Map.delete(:page_size) |> Map.delete(:sort_by) |> Map.delete(:sort_dir) |> Ledger.get_filtered_transaction_ids()
+    {:noreply, push_event(socket, "all_ids_selected", %{ids: ids})}
+  end
+
   def handle_event("delete_selected", %{"ids" => ids}, socket) when is_list(ids) do
     int_ids = Enum.map(ids, &String.to_integer/1)
     Ledger.delete_transactions(int_ids)
@@ -376,7 +383,7 @@ defmodule BanyWeb.TransactionLive.Index do
     |> reload_transactions()
   end
 
-  defp reload_transactions(socket) do
+  defp build_filter_opts(socket) do
     %{
       current_plan: plan,
       query: query,
@@ -394,7 +401,7 @@ defmodule BanyWeb.TransactionLive.Index do
     {resolved_from, resolved_to} =
       if preset == "custom", do: {date_from, date_to}, else: date_range_for_preset(preset)
 
-    filter_opts = %{
+    %{
       plan_id: plan && plan.id,
       query: query,
       category_ids: cat_ids,
@@ -406,6 +413,11 @@ defmodule BanyWeb.TransactionLive.Index do
       sort_by: sort_by,
       sort_dir: sort_dir
     }
+  end
+
+  defp reload_transactions(socket) do
+    filter_opts = build_filter_opts(socket)
+    page_size = socket.assigns.page_size
 
     filtered_total = Ledger.count_filtered_transactions(filter_opts)
     total_pages    = max(1, ceil(filtered_total / page_size))
