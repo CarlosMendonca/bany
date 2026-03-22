@@ -16,6 +16,10 @@
 * fix tests
 * check import error
 
+* global select all on header
+* three states selector (use color if we don't want to introduce a custom control)
+* single edit and multi edit
+
 ## Scratch pad
 * Transaction has a refence to Account
 * TransactionSplits has a reference to a Transaction, which informs the total value
