@@ -4,10 +4,15 @@ Hooks.FocusOnSlash = {
   mounted() {
     this._handler = (e) => {
       const tag = document.activeElement.tagName
+      const focused = document.activeElement === this.el
       if (e.key === "/" && tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") {
         e.preventDefault()
         this.el.focus()
         this.el.select()
+      } else if (e.key === "Enter" && focused) {
+        e.preventDefault()
+        this.el.blur()
+        document.dispatchEvent(new CustomEvent("transaction-focus-first"))
       }
     }
     window.addEventListener("keydown", this._handler)
@@ -57,6 +62,7 @@ Hooks.TransactionTable = {
       if (e.key === "j") { e.preventDefault(); this.moveCursor(+1) }
       else if (e.key === "k") { e.preventDefault(); this.moveCursor(-1) }
       else if (e.key === "x") { e.preventDefault(); this.toggleSelection() }
+      else if (e.key === "#") { e.preventDefault(); this._deleteHandler() }
     }
     window.addEventListener("keydown", this._keyHandler)
 
@@ -84,6 +90,15 @@ Hooks.TransactionTable = {
       this.updateDeleteBar()
     }
     this.deleteBtn.addEventListener("click", this._deleteHandler)
+
+    this._focusFirstHandler = () => {
+      const rows = this.getRows()
+      if (rows.length === 0) return
+      this.cursorIndex = 0
+      this.applyVisuals()
+      rows[0].scrollIntoView({ block: "nearest" })
+    }
+    document.addEventListener("transaction-focus-first", this._focusFirstHandler)
 
     // Server signals filter change → clear selection
     this.handleEvent("clear-table-selection", () => {
@@ -114,6 +129,7 @@ Hooks.TransactionTable = {
 
   destroyed() {
     window.removeEventListener("keydown", this._keyHandler)
+    document.removeEventListener("transaction-focus-first", this._focusFirstHandler)
   },
 
   getRows() {
