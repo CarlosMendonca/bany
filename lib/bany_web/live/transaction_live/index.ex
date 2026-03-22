@@ -221,7 +221,7 @@ defmodule BanyWeb.TransactionLive.Index do
               {highlight(transaction.memo, @query)}
             </td>
             <td phx-click={JS.navigate(transaction_path(@current_plan, transaction))} class="hover:cursor-pointer">
-              {highlight(to_string(transaction.amount), @query)}
+              {highlight(format_amount(transaction.amount, @current_plan && @current_plan.currency), @query)}
             </td>
             <td class="w-0 font-semibold">
               <div class="flex gap-4">

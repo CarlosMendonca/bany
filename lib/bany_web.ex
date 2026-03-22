@@ -86,6 +86,7 @@ defmodule BanyWeb do
       import Phoenix.HTML
       # Core UI components
       import BanyWeb.CoreComponents
+      import BanyWeb.MoneyHelper
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS

@@ -21,7 +21,9 @@ defmodule BanyWeb.AllocationLive.Index do
         rows={@streams.allocations}
         row_click={fn {_id, allocation} -> JS.navigate(~p"/plans/#{@current_plan.id}/allocations/#{allocation}") end}
       >
-        <:col :let={{_id, allocation}} label="Amount">{allocation.amount}</:col>
+        <:col :let={{_id, allocation}} label="Amount">
+          {format_amount(allocation.amount, @current_plan && @current_plan.currency)}
+        </:col>
         <:col :let={{_id, allocation}} label="Allocated on">{allocation.allocated_on}</:col>
         <:action :let={{_id, allocation}}>
           <div class="sr-only">

@@ -15,6 +15,8 @@ defmodule BanyWeb.PlanLive.Form do
 
       <.form for={@form} id="plan-form" phx-change="validate" phx-submit="save">
         <.input field={@form[:name]} type="text" label="Name" />
+        <.input field={@form[:currency]} type="select" label="Currency"
+          options={Enum.map(@currencies, &{&1, &1})} />
         <footer>
           <.button phx-disable-with="Saving..." variant="primary">Save Plan</.button>
           <.button navigate={return_path(@return_to, @plan)}>Cancel</.button>
@@ -41,6 +43,7 @@ defmodule BanyWeb.PlanLive.Form do
     socket
     |> assign(:page_title, "Edit Plan")
     |> assign(:plan, plan)
+    |> assign(:currencies, Plan.supported_currencies())
     |> assign(:form, to_form(Budget.change_plan(plan)))
   end
 
@@ -50,6 +53,7 @@ defmodule BanyWeb.PlanLive.Form do
     socket
     |> assign(:page_title, "New Plan")
     |> assign(:plan, plan)
+    |> assign(:currencies, Plan.supported_currencies())
     |> assign(:form, to_form(Budget.change_plan(plan)))
   end
 

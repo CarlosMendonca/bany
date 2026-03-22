@@ -21,7 +21,9 @@ defmodule BanyWeb.AllocationLive.Show do
       </.header>
 
       <.list>
-        <:item title="Amount">{@allocation.amount}</:item>
+        <:item title="Amount">
+          {format_amount(@allocation.amount, @current_plan && @current_plan.currency)}
+        </:item>
         <:item title="Allocated on">{@allocation.allocated_on}</:item>
       </.list>
     </Layouts.app>

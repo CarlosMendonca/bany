@@ -27,7 +27,9 @@ defmodule BanyWeb.TransactionLive.Show do
         </:item>
         <:item title="Memo">{@transaction.memo}</:item>
         <:item title="Date">{@transaction.date}</:item>
-        <:item title="Amount">{@transaction.amount}</:item>
+        <:item title="Amount">
+          {format_amount(@transaction.amount, @current_plan && @current_plan.currency)}
+        </:item>
         <:item title="Category">
           <%= if @transaction.category do %>
             <.link navigate={if @current_plan, do: ~p"/plans/#{@current_plan}/categories/#{@transaction.category}", else: ~p"/categories/#{@transaction.category}"}>

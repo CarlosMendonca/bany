@@ -22,6 +22,7 @@ defmodule BanyWeb.PlanLive.Show do
 
       <.list>
         <:item title="Name">{@plan.name}</:item>
+        <:item title="Currency">{@plan.currency}</:item>
       </.list>
     </Layouts.app>
     """

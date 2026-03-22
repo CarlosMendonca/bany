@@ -47,9 +47,9 @@ defmodule BanyWeb.CategoryLive.IndexWithTotals do
             <%= for category <- categories do %>
               <tr>
                 <td><%= category.name %></td>
-                <td><%= category.total_assigned %></td>
-                <td><%= category.total_spent %></td>
-                <td><%= category.total_available %></td>
+                <td>{format_amount(category.total_assigned, @current_plan && @current_plan.currency)}</td>
+                <td>{format_amount(category.total_spent, @current_plan && @current_plan.currency)}</td>
+                <td>{format_amount(category.total_available, @current_plan && @current_plan.currency)}</td>
               </tr>
             <% end %>
           <% end %>
