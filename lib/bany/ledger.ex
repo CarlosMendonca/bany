@@ -64,6 +64,59 @@ defmodule Bany.Ledger do
   def search_transactions_for_plan(plan_id, _),
     do: list_transactions_for_plan(plan_id) |> Repo.preload([:category, :account, :payee])
 
+  def count_transactions(nil), do: Repo.aggregate(Transaction, :count)
+
+  def count_transactions(plan_id) do
+    from(t in Transaction,
+      join: pa in "plan_accounts", on: pa.account_id == t.account_id and pa.plan_id == ^plan_id
+    )
+    |> Repo.aggregate(:count)
+  end
+
+  def filter_transactions(opts) do
+    Transaction
+    |> maybe_scope_to_plan(opts[:plan_id])
+    |> maybe_search(opts[:query])
+    |> maybe_filter_categories(opts[:category_ids])
+    |> maybe_filter_accounts(opts[:account_ids])
+    |> maybe_filter_date(opts[:date_from], opts[:date_to])
+    |> order_by([t], desc: t.date, desc: t.id)
+    |> Repo.all()
+    |> Repo.preload([:category, :account, :payee])
+  end
+
+  defp maybe_scope_to_plan(q, nil), do: q
+
+  defp maybe_scope_to_plan(q, plan_id) do
+    from t in q,
+      join: pa in "plan_accounts",
+      on: pa.account_id == t.account_id and pa.plan_id == ^plan_id
+  end
+
+  defp maybe_search(q, term) when term in [nil, ""], do: q
+
+  defp maybe_search(q, term) do
+    like = "%#{term}%"
+
+    from t in q,
+      left_join: p in assoc(t, :payee),
+      where:
+        ilike(t.memo, ^like) or
+          ilike(p.name, ^like) or
+          ilike(fragment("CAST(? AS TEXT)", t.amount), ^like)
+  end
+
+  defp maybe_filter_categories(q, ids) when ids in [nil, []], do: q
+  defp maybe_filter_categories(q, ids), do: from t in q, where: t.category_id in ^ids
+
+  defp maybe_filter_accounts(q, ids) when ids in [nil, []], do: q
+  defp maybe_filter_accounts(q, ids), do: from t in q, where: t.account_id in ^ids
+
+  defp maybe_filter_date(q, nil, nil), do: q
+  defp maybe_filter_date(q, from, nil), do: from t in q, where: t.date >= ^from
+  defp maybe_filter_date(q, nil, to), do: from t in q, where: t.date <= ^to
+  defp maybe_filter_date(q, from, to), do: from t in q, where: t.date >= ^from and t.date <= ^to
+
   @doc """
   Gets a single transaction.
 

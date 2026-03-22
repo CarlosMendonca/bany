@@ -17,4 +17,26 @@ Hooks.FocusOnSlash = {
   }
 }
 
+Hooks.FilterDropdown = {
+  mounted() {
+    this._outsideClick = (e) => {
+      if (!this.el.contains(e.target)) {
+        this.el.removeAttribute("open")
+      }
+    }
+    document.addEventListener("mousedown", this._outsideClick)
+  },
+  beforeUpdate() {
+    this._wasOpen = this.el.hasAttribute("open")
+  },
+  updated() {
+    if (this._wasOpen) {
+      this.el.setAttribute("open", "")
+    }
+  },
+  destroyed() {
+    document.removeEventListener("mousedown", this._outsideClick)
+  }
+}
+
 export default Hooks
