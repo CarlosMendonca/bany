@@ -276,7 +276,22 @@ defmodule BanyWeb.TransactionLive.Index do
      |> assign(:page_size, 50)
      |> assign(:sort_by, :date)
      |> assign(:sort_dir, :desc)
-     |> reload_transactions()}
+     |> assign(:page_loaded, false)}
+  end
+
+  @impl true
+  def handle_params(params, _uri, socket) do
+    page =
+      case Integer.parse(Map.get(params, "page", "1")) do
+        {n, ""} when n > 0 -> n
+        _ -> 1
+      end
+
+    if socket.assigns.page_loaded and socket.assigns.page == page do
+      {:noreply, socket}
+    else
+      {:noreply, socket |> assign(:page_loaded, true) |> assign(:page, page) |> reload_transactions()}
+    end
   end
 
   @impl true
@@ -359,11 +374,11 @@ defmodule BanyWeb.TransactionLive.Index do
   end
 
   def handle_event("prev_page", _params, socket) do
-    {:noreply, socket |> assign(:page, max(1, socket.assigns.page - 1)) |> reload_transactions()}
+    {:noreply, push_patch(socket, to: page_path(socket, max(1, socket.assigns.page - 1)))}
   end
 
   def handle_event("next_page", _params, socket) do
-    {:noreply, socket |> assign(:page, min(socket.assigns.total_pages, socket.assigns.page + 1)) |> reload_transactions()}
+    {:noreply, push_patch(socket, to: page_path(socket, min(socket.assigns.total_pages, socket.assigns.page + 1)))}
   end
 
   def handle_event("select_all", _params, socket) do
@@ -374,12 +389,13 @@ defmodule BanyWeb.TransactionLive.Index do
   def handle_event("delete_selected", %{"ids" => ids}, socket) when is_list(ids) do
     int_ids = Enum.map(ids, &String.to_integer/1)
     Ledger.delete_transactions(int_ids)
-    {:noreply, socket |> assign(:page, 1) |> reload_transactions()}
+    {:noreply, socket |> assign(:page, 1) |> push_patch(to: page_path(socket, 1)) |> reload_transactions()}
   end
 
   defp reload_transactions_with_reset(socket) do
     socket
     |> push_event("clear-table-selection", %{})
+    |> push_patch(to: page_path(socket, 1))
     |> reload_transactions()
   end
 
@@ -418,15 +434,24 @@ defmodule BanyWeb.TransactionLive.Index do
   defp reload_transactions(socket) do
     filter_opts = build_filter_opts(socket)
     page_size = socket.assigns.page_size
+    page = socket.assigns.page
 
     filtered_total = Ledger.count_filtered_transactions(filter_opts)
     total_pages    = max(1, ceil(filtered_total / page_size))
-    transactions   = Ledger.filter_transactions(filter_opts)
 
-    socket
-    |> assign(:filtered_total, filtered_total)
-    |> assign(:total_pages, total_pages)
-    |> stream(:transactions, transactions, reset: true)
+    if page > total_pages do
+      socket
+      |> assign(:filtered_total, filtered_total)
+      |> assign(:total_pages, total_pages)
+      |> push_patch(to: page_path(socket, 1))
+    else
+      transactions = Ledger.filter_transactions(filter_opts)
+
+      socket
+      |> assign(:filtered_total, filtered_total)
+      |> assign(:total_pages, total_pages)
+      |> stream(:transactions, transactions, reset: true)
+    end
   end
 
   attr :col, :atom, required: true
@@ -529,6 +554,16 @@ defmodule BanyWeb.TransactionLive.Index do
       {:error, _} ->
         text
     end
+  end
+
+  defp page_path(socket, 1) do
+    plan = socket.assigns.current_plan
+    if plan, do: ~p"/plans/#{plan}/transactions", else: ~p"/transactions"
+  end
+
+  defp page_path(socket, page) do
+    plan = socket.assigns.current_plan
+    if plan, do: ~p"/plans/#{plan}/transactions?#{[page: page]}", else: ~p"/transactions?#{[page: page]}"
   end
 
   defp payee_path(nil, p), do: ~p"/payees/#{p}"
