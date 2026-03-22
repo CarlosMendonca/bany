@@ -147,13 +147,27 @@ defmodule BanyWeb.TransactionLive.Index do
         <% end %>
       </div>
 
-      <p class="text-sm opacity-60">
-        <%= if @filtered_count == @total_count do %>
-          {@total_count} transactions
-        <% else %>
-          Showing {@filtered_count} of {@total_count} transactions
+      <div class="flex items-center justify-between text-sm opacity-60">
+        <span>
+          <%= if @filtered_total == @total_count do %>
+            {@total_count} transactions
+          <% else %>
+            {@filtered_total} of {@total_count} transactions match
+          <% end %>
+        </span>
+
+        <%= if @total_pages > 1 do %>
+          <div class="flex items-center gap-2">
+            <button phx-click="prev_page" disabled={@page <= 1} class="btn btn-sm btn-outline">
+              <.icon name="hero-chevron-left-micro" />
+            </button>
+            <span>Page {@page} of {@total_pages}</span>
+            <button phx-click="next_page" disabled={@page >= @total_pages} class="btn btn-sm btn-outline">
+              <.icon name="hero-chevron-right-micro" />
+            </button>
+          </div>
         <% end %>
-      </p>
+      </div>
 
       <.table
         id="transactions"
@@ -235,35 +249,36 @@ defmodule BanyWeb.TransactionLive.Index do
      |> assign(:categories, categories)
      |> assign(:accounts, accounts)
      |> assign(:total_count, total_count)
-     |> assign(:filtered_count, total_count)
+     |> assign(:page, 1)
+     |> assign(:page_size, 50)
      |> reload_transactions()}
   end
 
   @impl true
   def handle_event("search", %{"query" => q}, socket) do
-    {:noreply, socket |> assign(:query, String.trim(q)) |> reload_transactions()}
+    {:noreply, socket |> assign(:query, String.trim(q)) |> assign(:page, 1) |> reload_transactions()}
   end
 
   def handle_event("toggle_category", %{"id" => id_str}, socket) do
     id = String.to_integer(id_str)
     all_ids = Enum.map(socket.assigns.categories, & &1.id)
     new_ids = toggle_id(socket.assigns.selected_category_ids, id, all_ids)
-    {:noreply, socket |> assign(:selected_category_ids, new_ids) |> reload_transactions()}
+    {:noreply, socket |> assign(:selected_category_ids, new_ids) |> assign(:page, 1) |> reload_transactions()}
   end
 
   def handle_event("select_all_categories", _params, socket) do
-    {:noreply, socket |> assign(:selected_category_ids, nil) |> reload_transactions()}
+    {:noreply, socket |> assign(:selected_category_ids, nil) |> assign(:page, 1) |> reload_transactions()}
   end
 
   def handle_event("toggle_account", %{"id" => id_str}, socket) do
     id = String.to_integer(id_str)
     all_ids = Enum.map(socket.assigns.accounts, & &1.id)
     new_ids = toggle_id(socket.assigns.selected_account_ids, id, all_ids)
-    {:noreply, socket |> assign(:selected_account_ids, new_ids) |> reload_transactions()}
+    {:noreply, socket |> assign(:selected_account_ids, new_ids) |> assign(:page, 1) |> reload_transactions()}
   end
 
   def handle_event("select_all_accounts", _params, socket) do
-    {:noreply, socket |> assign(:selected_account_ids, nil) |> reload_transactions()}
+    {:noreply, socket |> assign(:selected_account_ids, nil) |> assign(:page, 1) |> reload_transactions()}
   end
 
   def handle_event("filter_date", params, socket) do
@@ -279,6 +294,7 @@ defmodule BanyWeb.TransactionLive.Index do
      |> assign(:date_preset, preset)
      |> assign(:date_from, from)
      |> assign(:date_to, to)
+     |> assign(:page, 1)
      |> reload_transactions()}
   end
 
@@ -291,7 +307,16 @@ defmodule BanyWeb.TransactionLive.Index do
      |> assign(:date_preset, "all_time")
      |> assign(:date_from, nil)
      |> assign(:date_to, nil)
+     |> assign(:page, 1)
      |> reload_transactions()}
+  end
+
+  def handle_event("prev_page", _params, socket) do
+    {:noreply, socket |> assign(:page, max(1, socket.assigns.page - 1)) |> reload_transactions()}
+  end
+
+  def handle_event("next_page", _params, socket) do
+    {:noreply, socket |> assign(:page, min(socket.assigns.total_pages, socket.assigns.page + 1)) |> reload_transactions()}
   end
 
   def handle_event("delete", %{"id" => id}, socket) do
@@ -308,24 +333,32 @@ defmodule BanyWeb.TransactionLive.Index do
       selected_account_ids: acc_ids,
       date_preset: preset,
       date_from: date_from,
-      date_to: date_to
+      date_to: date_to,
+      page: page,
+      page_size: page_size
     } = socket.assigns
 
     {resolved_from, resolved_to} =
       if preset == "custom", do: {date_from, date_to}, else: date_range_for_preset(preset)
 
-    transactions =
-      Ledger.filter_transactions(%{
-        plan_id: plan && plan.id,
-        query: query,
-        category_ids: cat_ids,
-        account_ids: acc_ids,
-        date_from: resolved_from,
-        date_to: resolved_to
-      })
+    filter_opts = %{
+      plan_id: plan && plan.id,
+      query: query,
+      category_ids: cat_ids,
+      account_ids: acc_ids,
+      date_from: resolved_from,
+      date_to: resolved_to,
+      page: page,
+      page_size: page_size
+    }
+
+    filtered_total = Ledger.count_filtered_transactions(filter_opts)
+    total_pages    = max(1, ceil(filtered_total / page_size))
+    transactions   = Ledger.filter_transactions(filter_opts)
 
     socket
-    |> assign(:filtered_count, length(transactions))
+    |> assign(:filtered_total, filtered_total)
+    |> assign(:total_pages, total_pages)
     |> stream(:transactions, transactions, reset: true)
   end
 

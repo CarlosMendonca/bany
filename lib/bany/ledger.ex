@@ -74,6 +74,9 @@ defmodule Bany.Ledger do
   end
 
   def filter_transactions(opts) do
+    page      = Map.get(opts, :page, 1)
+    page_size = Map.get(opts, :page_size, 50)
+
     Transaction
     |> maybe_scope_to_plan(opts[:plan_id])
     |> maybe_search(opts[:query])
@@ -81,8 +84,20 @@ defmodule Bany.Ledger do
     |> maybe_filter_accounts(opts[:account_ids])
     |> maybe_filter_date(opts[:date_from], opts[:date_to])
     |> order_by([t], desc: t.date, desc: t.id)
+    |> limit(^page_size)
+    |> offset(^((page - 1) * page_size))
     |> Repo.all()
     |> Repo.preload([:category, :account, :payee])
+  end
+
+  def count_filtered_transactions(opts) do
+    Transaction
+    |> maybe_scope_to_plan(opts[:plan_id])
+    |> maybe_search(opts[:query])
+    |> maybe_filter_categories(opts[:category_ids])
+    |> maybe_filter_accounts(opts[:account_ids])
+    |> maybe_filter_date(opts[:date_from], opts[:date_to])
+    |> Repo.aggregate(:count)
   end
 
   defp maybe_scope_to_plan(q, nil), do: q
