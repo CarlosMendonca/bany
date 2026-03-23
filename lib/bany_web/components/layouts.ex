@@ -33,51 +33,155 @@ defmodule BanyWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
-        </a>
-      </div>
-      <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <span class="text-sm px-3 opacity-60">
-              {if @current_plan, do: @current_plan.name, else: "No Plan Selected"}
-            </span>
-          </li>
-          <li><a href={~p"/plans"} class="btn btn-ghost">Plans</a></li>
-          <li><a href={payees_href(@current_plan)} class="btn btn-ghost">Payees</a></li>
-          <li><a href={transactions_href(@current_plan)} class="btn btn-ghost">Transactions</a></li>
-          <li><a href={categories_href(@current_plan)} class="btn btn-ghost">Categories</a></li>
+    <div class="flex min-h-screen">
+      <%!-- Sidebar --%>
+      <aside
+        id="sidebar"
+        class="flex flex-col w-64 h-screen sticky top-0 shrink-0 border-r border-base-300 bg-base-100 transition-[width] duration-200 overflow-hidden data-[collapsed]:w-16"
+      >
+        <%!-- Header row: logo + toggle --%>
+        <div class="flex items-center justify-between px-3 py-3 border-b border-base-300">
+          <a href="/" class="flex items-center gap-2 [[data-collapsed]_&]:hidden">
+            <img src={~p"/images/logo.svg"} width="28" />
+            <span class="text-sm font-semibold">Bany</span>
+          </a>
+          <button
+            phx-click={JS.toggle_attribute({"data-collapsed", ""}, to: "#sidebar")}
+            class="btn btn-ghost btn-sm btn-square shrink-0"
+          >
+            <.icon name="hero-bars-3" />
+          </button>
+        </div>
+
+        <%!-- Current plan name --%>
+        <div class="px-3 py-2 text-xs opacity-50 truncate [[data-collapsed]_&]:hidden">
+          {if @current_plan, do: @current_plan.name, else: "No plan selected"}
+        </div>
+
+        <%!-- Nav --%>
+        <nav class="flex-1 flex flex-col gap-0.5 px-2 py-2">
+          <a
+            href={~p"/admin"}
+            class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+          >
+            <.icon name="hero-wrench-screwdriver" class="size-5 shrink-0" />
+            <span class="[[data-collapsed]_&]:hidden">Admin</span>
+          </a>
+          <a
+            href={~p"/plans"}
+            class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+          >
+            <.icon name="hero-clipboard-document-list" class="size-5 shrink-0" />
+            <span class="[[data-collapsed]_&]:hidden">Plans</span>
+          </a>
           <%= if @current_plan do %>
-            <li><a href={~p"/plans/#{@current_plan}/category_groups"} class="btn btn-ghost">Category Groups</a></li>
-            <li><a href={~p"/plans/#{@current_plan}/allocations"} class="btn btn-ghost">Allocations</a></li>
-            <li><a href={~p"/plans/#{@current_plan}/categories/with_totals/#{Date.utc_today().year}/#{Date.utc_today().month}"} class="btn btn-ghost">Budgets</a></li>
-            <li><a href={~p"/plans/#{@current_plan}/accounts"} class="btn btn-ghost">Accounts</a></li>
+            <a
+              href={~p"/plans/#{@current_plan}/accounts"}
+              class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+            >
+              <.icon name="hero-banknotes" class="size-5 shrink-0" />
+              <span class="[[data-collapsed]_&]:hidden">Accounts</span>
+            </a>
+            <a
+              href={~p"/plans/#{@current_plan}/allocations"}
+              class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+            >
+              <.icon name="hero-arrow-right-on-rectangle" class="size-5 shrink-0" />
+              <span class="[[data-collapsed]_&]:hidden">Allocations</span>
+            </a>
+            <a
+              href={~p"/plans/#{@current_plan}/categories/with_totals/#{Date.utc_today().year}/#{Date.utc_today().month}"}
+              class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+            >
+              <.icon name="hero-calculator" class="size-5 shrink-0" />
+              <span class="[[data-collapsed]_&]:hidden">Budgets</span>
+            </a>
           <% end %>
-          <li><a href={~p"/admin"} class="btn btn-ghost">Admin</a></li>
+          <a
+            href={categories_href(@current_plan)}
+            class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+          >
+            <.icon name="hero-tag" class="size-5 shrink-0" />
+            <span class="[[data-collapsed]_&]:hidden">Categories</span>
+          </a>
+          <%= if @current_plan do %>
+            <a
+              href={~p"/plans/#{@current_plan}/category_groups"}
+              class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+            >
+              <.icon name="hero-folder-open" class="size-5 shrink-0" />
+              <span class="[[data-collapsed]_&]:hidden">Category Groups</span>
+            </a>
+          <% end %>
+          <a
+            href={payees_href(@current_plan)}
+            class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+          >
+            <.icon name="hero-users" class="size-5 shrink-0" />
+            <span class="[[data-collapsed]_&]:hidden">Payees</span>
+          </a>
+          <a
+            href={transactions_href(@current_plan)}
+            class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+          >
+            <.icon name="hero-list-bullet" class="size-5 shrink-0" />
+            <span class="[[data-collapsed]_&]:hidden">Transactions</span>
+          </a>
+        </nav>
+
+        <%!-- Bottom: user + theme --%>
+        <div class="flex flex-col gap-1 px-2 py-3 border-t border-base-300">
           <%= if @current_scope && @current_scope.user do %>
-            <li><span class="text-sm opacity-60">{@current_scope.user.email}</span></li>
-            <li>
-              <.link href={~p"/users/log-out"} method="delete" class="btn btn-ghost btn-sm">
-                Log out
-              </.link>
-            </li>
+            <div class="px-2 py-1 text-xs opacity-60 truncate [[data-collapsed]_&]:hidden">
+              {@current_scope.user.email}
+            </div>
+            <.link
+              href={~p"/users/settings"}
+              class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+            >
+              <.icon name="hero-cog-6-tooth" class="size-5 shrink-0" />
+              <span class="[[data-collapsed]_&]:hidden">Settings</span>
+            </.link>
+            <.link
+              href={~p"/users/log-out"}
+              method="delete"
+              class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+            >
+              <.icon name="hero-arrow-left-start-on-rectangle" class="size-5 shrink-0" />
+              <span class="[[data-collapsed]_&]:hidden">Log out</span>
+            </.link>
+          <% else %>
+            <.link
+              href={~p"/users/register"}
+              class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+            >
+              <.icon name="hero-user-plus" class="size-5 shrink-0" />
+              <span class="[[data-collapsed]_&]:hidden">Register</span>
+            </.link>
+            <.link
+              href={~p"/users/log-in"}
+              class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+            >
+              <.icon name="hero-arrow-right-on-rectangle" class="size-5 shrink-0" />
+              <span class="[[data-collapsed]_&]:hidden">Log in</span>
+            </.link>
           <% end %>
-          <li><.theme_toggle /></li>
-        </ul>
-      </div>
-    </header>
+          <div class="px-2 py-2 [[data-collapsed]_&]:hidden">
+            <.theme_toggle />
+          </div>
+        </div>
+      </aside>
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-6xl space-y-4">
-        {render_slot(@inner_block)}
+      <%!-- Main content --%>
+      <div class="flex-1 min-w-0 overflow-auto">
+        <main class="px-4 py-8 sm:px-6 lg:px-8">
+          <div class="mx-auto max-w-6xl space-y-4">
+            {render_slot(@inner_block)}
+          </div>
+        </main>
+        <.flash_group flash={@flash} />
       </div>
-    </main>
-
-    <.flash_group flash={@flash} />
+    </div>
     """
   end
 
