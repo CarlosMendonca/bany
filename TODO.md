@@ -1,14 +1,12 @@
-## TODO
+# TODO
 
 ### P0 -- core feature
-* include a special category for to-be-budgeted inflow; should be added on priv/repo/seeds.exs for test/development and as a migration
-* on categories with totals, show total assigned/activity/available for each category group
+* single edit and multi edit
 * on categories with totals, show how much is available from the special inflow category
+* include a special category for to-be-budgeted inflow; should be added on priv/repo/seeds.exs for test/development and as a migration 
 * implement transaction splits between categories
 * implement transaction splits between categories between Plans
-* single edit and multi edit
 * Plaid import with async workers
-* redesign -- move navigation row to left sidebar
 
 ### P1 -- quality-of-life features & chores
 * on CategoryGroup, add labels for how many categories are associated
@@ -25,11 +23,17 @@
 ### DONE
 * assign transactions to an Account; Account may be associated with two Plans
 * an Account can be associated with more than one Plan; on the Transaction screen, we only show the Transaction of the current Plan
+* on categories with totals, show total assigned/activity/available for each category group
 * introduce Plan as a an application context (https://hexdocs.pm/phoenix/contexts.html)
 * global select all on header
 * three states selector
+* redesign -- move navigation row to left sidebar
 
 ## Scratch pad
+
+### 
+
+### TransactionSplits
 * Transaction has a refence to Account
 * TransactionSplits has a reference to a Transaction, which informs the total value
 * TransactionSplit has rerence to a Category and a Plan; it cannot refer to an Account, because it's not a real Transaction
