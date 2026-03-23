@@ -1,24 +1,33 @@
 ## TODO
 
-* add some zero state (e.g. CategoryGroup needs a Plan)
-* on CategoryGroup, add labels for how many categories are associated
-* on Categories, add labels for how many Plans/CategoryGroups are associated
+### P0 -- core feature
 * include a special category for to-be-budgeted inflow; should be added on priv/repo/seeds.exs for test/development and as a migration
 * on categories with totals, show total assigned/activity/available for each category group
 * on categories with totals, show how much is available from the special inflow category
 * implement transaction splits between categories
-* implement transaction splits between categories between Plans;
+* implement transaction splits between categories between Plans
+* single edit and multi edit
+* Plaid import with async workers
+* redesign -- move navigation row to left sidebar
+
+### P1 -- quality-of-life features & chores
+* on CategoryGroup, add labels for how many categories are associated
+* on Categories, add labels for how many Plans/CategoryGroups are associated
+* clean up application
+* fix tests
+* fix import error
+* refactor YNAB importer as an async worker
+* make all index views sortable
+
+### P2 -- polish
+* add some zero state (e.g. CategoryGroup needs a Plan)
+
+### DONE
 * assign transactions to an Account; Account may be associated with two Plans
 * an Account can be associated with more than one Plan; on the Transaction screen, we only show the Transaction of the current Plan
 * introduce Plan as a an application context (https://hexdocs.pm/phoenix/contexts.html)
-
-* clean up application
-* fix tests
-* check import error
-
 * global select all on header
-* three states selector (use color if we don't want to introduce a custom control)
-* single edit and multi edit
+* three states selector
 
 ## Scratch pad
 * Transaction has a refence to Account
