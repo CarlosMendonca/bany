@@ -33,7 +33,7 @@ defmodule BanyWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <div class="flex min-h-screen">
+    <div class="flex h-screen">
       <%!-- Sidebar --%>
       <aside
         id="sidebar"
@@ -173,7 +173,7 @@ defmodule BanyWeb.Layouts do
       </aside>
 
       <%!-- Main content --%>
-      <div class="flex-1 min-w-0 overflow-auto">
+      <div class="flex-1 min-w-0 overflow-y-auto">
         <main class="px-4 py-8 sm:px-6 lg:px-8">
           <div class="mx-auto max-w-6xl space-y-4">
             {render_slot(@inner_block)}

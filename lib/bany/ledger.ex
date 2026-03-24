@@ -243,6 +243,25 @@ defmodule Bany.Ledger do
     |> Repo.delete_all()
   end
 
+  def get_transactions_for_edit(ids) when is_list(ids) do
+    int_ids = Enum.map(ids, fn id -> if is_binary(id), do: String.to_integer(id), else: id end)
+    from(t in Transaction, where: t.id in ^int_ids) |> Repo.all()
+  end
+
+  def bulk_update_transactions(ids, attrs) when is_list(ids) and is_map(attrs) do
+    int_ids = Enum.map(ids, fn id -> if is_binary(id), do: String.to_integer(id), else: id end)
+    sample = from(t in Transaction, where: t.id in ^int_ids, limit: 1) |> Repo.one!()
+    changeset = Transaction.partial_changeset(sample, attrs)
+
+    if changeset.valid? do
+      sets = Map.to_list(changeset.changes) ++ [updated_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+      from(t in Transaction, where: t.id in ^int_ids) |> Repo.update_all(set: sets)
+      :ok
+    else
+      {:error, changeset}
+    end
+  end
+
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking transaction changes.
 

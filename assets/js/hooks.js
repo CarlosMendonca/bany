@@ -49,6 +49,8 @@ Hooks.TransactionTable = {
     this.cursorIndex = null
     this.selectedIds = new Set()
     this.pendingCursor = null // "first" | "last" | null
+    this.lastPushedIds = ""
+    this._selectionDebounce = null
 
     this.tbody = this.el.querySelector("tbody")
     this.selectAllCb = document.getElementById("select-all-checkbox")
@@ -125,6 +127,9 @@ Hooks.TransactionTable = {
       this.selectedIds.clear()
       this.cursorIndex = null
       this.pendingCursor = null
+      this.lastPushedIds = ""
+      clearTimeout(this._selectionDebounce)
+      this.applyVisuals()
       this.updateDeleteBar()
     })
   },
@@ -150,6 +155,7 @@ Hooks.TransactionTable = {
   destroyed() {
     window.removeEventListener("keydown", this._keyHandler)
     document.removeEventListener("transaction-focus-first", this._focusFirstHandler)
+    clearTimeout(this._selectionDebounce)
   },
 
   getRows() {
@@ -224,6 +230,19 @@ Hooks.TransactionTable = {
     this.selectedCountDisplay.classList.toggle("hidden", n === 0)
     this.selectedCountN.textContent = n
     this.updateSelectAll()
+    this.pushSelectionChanged()
+  },
+
+  pushSelectionChanged() {
+    const sorted = Array.from(this.selectedIds).sort().join(",")
+    if (sorted === this.lastPushedIds) return
+    clearTimeout(this._selectionDebounce)
+    this._selectionDebounce = setTimeout(() => {
+      const current = Array.from(this.selectedIds).sort().join(",")
+      if (current === this.lastPushedIds) return
+      this.lastPushedIds = current
+      this.pushEvent("selection_changed", { ids: Array.from(this.selectedIds) })
+    }, 150)
   },
 
   updateSelectAll() {

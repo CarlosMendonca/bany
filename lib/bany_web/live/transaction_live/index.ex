@@ -235,9 +235,110 @@ defmodule BanyWeb.TransactionLive.Index do
         </tbody>
       </table>
 
-      <div id="delete-selected-bar" class="mt-2">
+      <div id="edit-bar" class="sticky bottom-0 z-10 bg-base-100 border-t border-base-300 py-2">
+        <.form
+          :if={@edit_changeset}
+          for={@edit_changeset}
+          id="edit-bar-form"
+          phx-submit="edit_bar_save"
+          class="flex flex-wrap items-end gap-2 mb-2 p-2 bg-base-200 rounded-lg"
+        >
+          <%!-- Date --%>
+          <label class="flex flex-col gap-0.5">
+            <span class="text-xs opacity-60">Date</span>
+            <input
+              type="date"
+              name="edit_bar[date]"
+              value={if :date in @edit_multi_fields, do: "", else: Phoenix.HTML.Form.input_value(@edit_changeset, :date)}
+              placeholder={if :date in @edit_multi_fields, do: "(multiple)", else: ""}
+              class={["input input-sm input-bordered w-36",
+                @edit_changeset[:date].errors != [] && "input-error"]}
+            />
+            <span :for={{msg, opts} <- @edit_changeset[:date].errors} class="text-xs text-error">
+              {translate_error({msg, opts})}
+            </span>
+          </label>
+
+          <%!-- Category --%>
+          <label class="flex flex-col gap-0.5">
+            <span class="text-xs opacity-60">Category</span>
+            <select name="edit_bar[category_id]" class="select select-sm select-bordered">
+              <%= if :category_id in @edit_multi_fields do %>
+                <option value="__unchanged__" selected>(multiple values)</option>
+              <% else %>
+                <option value="" selected={is_nil(Phoenix.HTML.Form.input_value(@edit_changeset, :category_id))}>
+                  (none)
+                </option>
+              <% end %>
+              <option
+                :for={cat <- @categories}
+                value={cat.id}
+                selected={not (:category_id in @edit_multi_fields) and Phoenix.HTML.Form.input_value(@edit_changeset, :category_id) == cat.id}
+              >{cat.name}</option>
+            </select>
+          </label>
+
+          <%!-- Payee --%>
+          <label class="flex flex-col gap-0.5">
+            <span class="text-xs opacity-60">Payee</span>
+            <select name="edit_bar[payee_id]" class="select select-sm select-bordered">
+              <%= if :payee_id in @edit_multi_fields do %>
+                <option value="__unchanged__" selected>(multiple values)</option>
+              <% else %>
+                <option value="" selected={is_nil(Phoenix.HTML.Form.input_value(@edit_changeset, :payee_id))}>
+                  (none)
+                </option>
+              <% end %>
+              <option
+                :for={payee <- @payees}
+                value={payee.id}
+                selected={not (:payee_id in @edit_multi_fields) and Phoenix.HTML.Form.input_value(@edit_changeset, :payee_id) == payee.id}
+              >{payee.name}</option>
+            </select>
+          </label>
+
+          <%!-- Memo --%>
+          <label class="flex flex-col gap-0.5">
+            <span class="text-xs opacity-60">Memo</span>
+            <input
+              type="text"
+              name="edit_bar[memo]"
+              value={if :memo in @edit_multi_fields, do: "", else: (Phoenix.HTML.Form.input_value(@edit_changeset, :memo) || "")}
+              placeholder={if :memo in @edit_multi_fields, do: "(multiple values)", else: ""}
+              class="input input-sm input-bordered w-40"
+            />
+          </label>
+
+          <%!-- Amount --%>
+          <label class="flex flex-col gap-0.5">
+            <span class="text-xs opacity-60">Amount</span>
+            <input
+              type="number"
+              name="edit_bar[amount]"
+              value={if :amount in @edit_multi_fields, do: "", else: (Phoenix.HTML.Form.input_value(@edit_changeset, :amount) || "")}
+              placeholder={if :amount in @edit_multi_fields, do: "(multiple)", else: ""}
+              step="any"
+              class={["input input-sm input-bordered w-28",
+                @edit_changeset[:amount].errors != [] && "input-error"]}
+            />
+            <span :for={{msg, opts} <- @edit_changeset[:amount].errors} class="text-xs text-error">
+              {translate_error({msg, opts})}
+            </span>
+          </label>
+
+          <button type="submit" class="btn btn-sm btn-success btn-square" title="Save">
+            <.icon name="hero-check" />
+          </button>
+
+          <button type="button" phx-click="edit_bar_cancel" class="btn btn-sm btn-ghost btn-square" title="Cancel">
+            <.icon name="hero-x-mark" />
+          </button>
+        </.form>
+
+        <%!-- Always in DOM so JS hook can cache on mounted() --%>
         <button id="delete-selected-btn" class="btn btn-error btn-sm" disabled>
-          Delete selected (<span id="delete-selected-count">0</span>)
+          <.icon name="hero-trash" />
+          Delete (<span id="delete-selected-count">0</span>)
         </button>
       </div>
     </Layouts.app>
@@ -258,6 +359,11 @@ defmodule BanyWeb.TransactionLive.Index do
         do: Ledger.list_accounts_for_plan(current_plan.id),
         else: Ledger.list_accounts()
 
+    payees =
+      if current_plan,
+        do: Ledger.list_payees_for_plan(current_plan.id),
+        else: Ledger.list_payees()
+
     total_count = Ledger.count_transactions(current_plan && current_plan.id)
 
     {:ok,
@@ -271,11 +377,15 @@ defmodule BanyWeb.TransactionLive.Index do
      |> assign(:date_to, nil)
      |> assign(:categories, categories)
      |> assign(:accounts, accounts)
+     |> assign(:payees, payees)
      |> assign(:total_count, total_count)
      |> assign(:page, 1)
      |> assign(:page_size, 50)
      |> assign(:sort_by, :date)
      |> assign(:sort_dir, :desc)
+     |> assign(:edit_ids, [])
+     |> assign(:edit_changeset, nil)
+     |> assign(:edit_multi_fields, MapSet.new())
      |> assign(:page_loaded, false)}
   end
 
@@ -392,11 +502,96 @@ defmodule BanyWeb.TransactionLive.Index do
     {:noreply, socket |> assign(:page, 1) |> push_patch(to: page_path(socket, 1)) |> reload_transactions()}
   end
 
+  def handle_event("selection_changed", %{"ids" => []}, socket) do
+    {:noreply, clear_edit_state(socket)}
+  end
+
+  def handle_event("selection_changed", %{"ids" => ids}, socket) do
+    transactions = Ledger.get_transactions_for_edit(ids)
+    {common, multi_fields} = compute_common_values(transactions)
+    base = struct(%Bany.Ledger.Transaction{}, common)
+    changeset = to_form(Ledger.change_transaction(base), as: :edit_bar)
+
+    {:noreply,
+     socket
+     |> assign(:edit_ids, ids)
+     |> assign(:edit_changeset, changeset)
+     |> assign(:edit_multi_fields, multi_fields)}
+  end
+
+  def handle_event("edit_bar_save", %{"edit_bar" => params}, socket) do
+    ids = socket.assigns.edit_ids
+
+    if length(ids) == 1 do
+      t = Ledger.get_transaction!(String.to_integer(hd(ids)))
+
+      case Ledger.update_transaction(t, params) do
+        {:ok, _} ->
+          {:noreply,
+           socket
+           |> clear_edit_state()
+           |> push_event("clear-table-selection", %{})
+           |> reload_transactions()}
+
+        {:error, cs} ->
+          {:noreply, assign(socket, :edit_changeset, to_form(cs, as: :edit_bar, action: :validate))}
+      end
+    else
+      multi_fields = socket.assigns.edit_multi_fields
+
+      clean_params =
+        params
+        |> Enum.reject(fn {k, v} ->
+          field = String.to_existing_atom(k)
+          v == "__unchanged__" or (v in ["", nil] and MapSet.member?(multi_fields, field))
+        end)
+        |> Map.new()
+
+      case Ledger.bulk_update_transactions(ids, clean_params) do
+        :ok ->
+          {:noreply,
+           socket
+           |> clear_edit_state()
+           |> push_event("clear-table-selection", %{})
+           |> reload_transactions()}
+
+        {:error, cs} ->
+          {:noreply, assign(socket, :edit_changeset, to_form(cs, as: :edit_bar, action: :validate))}
+      end
+    end
+  end
+
+  def handle_event("edit_bar_cancel", _params, socket) do
+    {:noreply, socket |> clear_edit_state() |> push_event("clear-table-selection", %{})}
+  end
+
   defp reload_transactions_with_reset(socket) do
     socket
+    |> clear_edit_state()
     |> push_event("clear-table-selection", %{})
     |> push_patch(to: page_path(socket, 1))
     |> reload_transactions()
+  end
+
+  defp clear_edit_state(socket) do
+    socket
+    |> assign(:edit_ids, [])
+    |> assign(:edit_changeset, nil)
+    |> assign(:edit_multi_fields, MapSet.new())
+  end
+
+  defp compute_common_values([]), do: {%{}, MapSet.new()}
+
+  defp compute_common_values(transactions) do
+    fields = [:date, :amount, :memo, :category_id, :payee_id]
+
+    Enum.reduce(fields, {%{}, MapSet.new()}, fn field, {common, multi} ->
+      unique = transactions |> Enum.map(&Map.get(&1, field)) |> Enum.uniq()
+
+      if length(unique) == 1,
+        do: {Map.put(common, field, hd(unique)), multi},
+        else: {common, MapSet.put(multi, field)}
+    end)
   end
 
   defp build_filter_opts(socket) do

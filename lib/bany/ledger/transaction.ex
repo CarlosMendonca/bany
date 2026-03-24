@@ -19,4 +19,12 @@ defmodule Bany.Ledger.Transaction do
     |> cast(attrs, [:memo, :date, :amount, :category_id, :account_id, :payee_id])
     |> validate_required([:date, :amount])
   end
+
+  def partial_changeset(transaction, attrs) do
+    changeset = cast(transaction, attrs, [:memo, :date, :amount, :category_id, :payee_id])
+    changeset = if Map.has_key?(attrs, "amount") or Map.has_key?(attrs, :amount),
+      do: validate_required(changeset, [:amount]), else: changeset
+    if Map.has_key?(attrs, "date") or Map.has_key?(attrs, :date),
+      do: validate_required(changeset, [:date]), else: changeset
+  end
 end
