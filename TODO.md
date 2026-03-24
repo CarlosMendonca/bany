@@ -1,7 +1,7 @@
 # TODO
 
 ### P0 -- core feature
-* single edit and multi edit
+* single edit and multi edit -- tweak cursor position after OK/Cancel; keyboard shortcuts to enter / exit mode
 * on categories with totals, show how much is available from the special inflow category
 * include a special category for to-be-budgeted inflow; should be added on priv/repo/seeds.exs for test/development and as a migration 
 * implement transaction splits between categories
@@ -31,7 +31,11 @@
 
 ## Scratch pad
 
-### 
+### Inflows
+* One inflow category versus multiple
+* One inflow: single rule -- only assign to this month what you got last month (or take from Savings)
+* We take from Savings, since we don't budget for future months when we know there will be no inflow, so maybe go with one inflow category
+* Adding positive money to inflow 
 
 ### TransactionSplits
 * Transaction has a refence to Account

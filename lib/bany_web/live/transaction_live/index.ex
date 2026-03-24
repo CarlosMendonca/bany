@@ -281,20 +281,18 @@ defmodule BanyWeb.TransactionLive.Index do
           <%!-- Payee --%>
           <label class="flex flex-col gap-0.5">
             <span class="text-xs opacity-60">Payee</span>
-            <select name="edit_bar[payee_id]" class="select select-sm select-bordered">
-              <%= if :payee_id in @edit_multi_fields do %>
-                <option value="__unchanged__" selected>(multiple values)</option>
-              <% else %>
-                <option value="" selected={is_nil(Phoenix.HTML.Form.input_value(@edit_changeset, :payee_id))}>
-                  (none)
-                </option>
-              <% end %>
-              <option
-                :for={payee <- @payees}
-                value={payee.id}
-                selected={not (:payee_id in @edit_multi_fields) and Phoenix.HTML.Form.input_value(@edit_changeset, :payee_id) == payee.id}
-              >{payee.name}</option>
-            </select>
+            <input
+              type="text"
+              name="edit_bar[payee_name]"
+              list="payee-options"
+              value={payee_name_value(@edit_changeset, @edit_multi_fields, @payees)}
+              placeholder={if :payee_id in @edit_multi_fields, do: "(multiple values)", else: ""}
+              class="input input-sm input-bordered w-40"
+              autocomplete="off"
+            />
+            <datalist id="payee-options">
+              <option :for={payee <- @payees} value={payee.name} />
+            </datalist>
           </label>
 
           <%!-- Memo --%>
@@ -520,6 +518,7 @@ defmodule BanyWeb.TransactionLive.Index do
   end
 
   def handle_event("edit_bar_save", %{"edit_bar" => params}, socket) do
+    params = resolve_payee_param(params)
     ids = socket.assigns.edit_ids
 
     if length(ids) == 1 do
@@ -578,6 +577,31 @@ defmodule BanyWeb.TransactionLive.Index do
     |> assign(:edit_ids, [])
     |> assign(:edit_changeset, nil)
     |> assign(:edit_multi_fields, MapSet.new())
+  end
+
+  defp payee_name_value(changeset, multi_fields, payees) do
+    if :payee_id in multi_fields do
+      ""
+    else
+      case Phoenix.HTML.Form.input_value(changeset, :payee_id) do
+        nil -> ""
+        id  -> Enum.find_value(payees, "", fn p -> if p.id == id, do: p.name end)
+      end
+    end
+  end
+
+  defp resolve_payee_param(params) do
+    case Map.pop(params, "payee_name") do
+      {nil, params} ->
+        params
+      {"", rest} ->
+        Map.put(rest, "payee_id", "")
+      {name, rest} ->
+        case Ledger.find_or_create_payee_by_name(name) do
+          nil   -> rest
+          payee -> Map.put(rest, "payee_id", to_string(payee.id))
+        end
+    end
   end
 
   defp compute_common_values([]), do: {%{}, MapSet.new()}
