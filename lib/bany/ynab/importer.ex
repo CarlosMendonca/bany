@@ -43,6 +43,7 @@ defmodule Bany.YNAB.Importer do
       file_path
       |> File.stream!()
       |> Bany.YNAB.CSVParser.parse_stream(skip_headers: true)
+      |> Enum.reject(&(&1 == [""]))
       |> Enum.to_list()
 
     {stats, _cache} =
