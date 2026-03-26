@@ -12,7 +12,7 @@ defmodule Bany.BudgetTest do
 
     test "list_categories/0 returns all categories" do
       category = category_fixture()
-      assert Budget.list_categories() == [category]
+      assert category in Budget.list_categories()
     end
 
     test "get_category!/1 returns the category with given id" do

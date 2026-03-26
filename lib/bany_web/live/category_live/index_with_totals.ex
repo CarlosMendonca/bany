@@ -24,6 +24,44 @@ defmodule BanyWeb.CategoryLive.IndexWithTotals do
           </.button>
         </:actions>
       </.header>
+
+      <%!-- TBB header --%>
+      <div class="flex flex-wrap gap-4 mb-4 p-4 bg-base-200 rounded-lg">
+        <div class="flex flex-col gap-0.5">
+          <span class="text-xs opacity-60">Ready to Assign</span>
+          <span class={[
+            "text-xl font-semibold",
+            Decimal.gt?(@tbb_data.tbb, 0) && "text-success",
+            Decimal.lt?(@tbb_data.tbb, 0) && "text-error"
+          ]}>
+            {format_amount(@tbb_data.tbb, @current_plan && @current_plan.currency)}
+          </span>
+        </div>
+        <div class="divider divider-horizontal" />
+        <div class="flex flex-col gap-0.5">
+          <span class="text-xs opacity-60">Last month's income</span>
+          <span class="text-xl font-semibold">
+            {format_amount(@tbb_data.last_month_inflow, @current_plan && @current_plan.currency)}
+          </span>
+        </div>
+        <div class="flex flex-col gap-0.5">
+          <span class="text-xs opacity-60">This month's allocations</span>
+          <span class="text-xl font-semibold">
+            {format_amount(@tbb_data.this_month_allocated, @current_plan && @current_plan.currency)}
+          </span>
+        </div>
+        <div class="flex flex-col gap-0.5">
+          <span class="text-xs opacity-60">vs. last month</span>
+          <% delta = Decimal.sub(@tbb_data.last_month_inflow, @tbb_data.this_month_allocated) %>
+          <span class={[
+            "text-xl font-semibold",
+            Decimal.lt?(delta, 0) && "text-error"
+          ]}>
+            {format_amount(delta, @current_plan && @current_plan.currency)}
+          </span>
+        </div>
+      </div>
+
       <table class="table table-zebra">
         <thead>
           <tr>
@@ -73,10 +111,13 @@ defmodule BanyWeb.CategoryLive.IndexWithTotals do
       next: Date.shift(selected_date, month: 1)
     }
 
+    {groups, tbb_data} = Budget.list_categories_with_totals(current_plan.id, month, year)
+
     socket =
       socket
       |> assign(:page_title, "Listing Categories with Totals")
-      |> assign(:category_groups, Budget.list_categories_with_totals(current_plan.id, month, year))
+      |> assign(:category_groups, groups)
+      |> assign(:tbb_data, tbb_data)
       |> assign(:dates, dates)
 
     {:ok, socket}

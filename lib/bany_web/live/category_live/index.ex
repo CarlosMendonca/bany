@@ -30,6 +30,7 @@ defmodule BanyWeb.CategoryLive.Index do
         </:action>
         <:action :let={{id, category}}>
           <.link
+            :if={not category.is_inflow}
             phx-click={JS.push("delete", value: %{id: category.id}) |> hide("##{id}")}
             data-confirm="Are you sure?"
           >
@@ -59,9 +60,14 @@ defmodule BanyWeb.CategoryLive.Index do
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     category = Budget.get_category!(id)
-    {:ok, _} = Budget.delete_category(category)
 
-    {:noreply, stream_delete(socket, :categories, category)}
+    case Budget.delete_category(category) do
+      {:ok, _} ->
+        {:noreply, stream_delete(socket, :categories, category)}
+
+      {:error, :inflow_category_protected} ->
+        {:noreply, put_flash(socket, :error, "The inflow category cannot be deleted.")}
+    end
   end
 
   defp categories_new_path(nil), do: ~p"/categories/new"

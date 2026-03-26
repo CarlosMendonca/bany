@@ -8,7 +8,7 @@ defmodule Bany.Budget do
 
   alias Bany.Budget.Allocation
   alias Bany.Budget.Category
-  alias Bany.Ledger.Transaction
+  alias Bany.Ledger.{Account, Transaction}
 
   @doc """
   Returns the list of categories.
@@ -32,16 +32,27 @@ defmodule Bany.Budget do
 
   def list_categories_with_totals(plan_id, month, year) do
     date_range = month_date_range(month, year)
+    prev_date_range = prev_month_date_range(month, year)
 
-    query_categories_with_totals(date_range, plan_id)
-    |> compute_category_totals()
-    |> group_by_category_group()
-    |> append_uncategorized_transactions(date_range)
+    groups =
+      query_categories_with_totals(date_range, plan_id)
+      |> compute_category_totals()
+      |> group_by_category_group()
+      |> append_uncategorized_transactions(date_range)
+
+    tbb_data = compute_tbb(plan_id, date_range, prev_date_range)
+
+    {groups, tbb_data}
   end
 
   defp month_date_range(month, year) do
     first_day = Date.new!(year, month, 1)
     {first_day, Date.end_of_month(first_day)}
+  end
+
+  defp prev_month_date_range(month, year) do
+    prev = Date.shift(Date.new!(year, month, 1), month: -1)
+    {prev, Date.end_of_month(prev)}
   end
 
   defp query_categories_with_totals({first_day, end_of_month}, plan_id) do
@@ -60,6 +71,7 @@ defmodule Bany.Budget do
       on: a.category_id == c.id and a.allocated_on == ^first_day and a.plan_id == ^plan_id,
       left_join: t_sums in subquery(transactions_query),
       on: t_sums.category_id == c.id,
+      where: not c.is_inflow,
       preload: [:category_groups],
       select: {c, a.amount, t_sums.total_spent}
     )
@@ -115,6 +127,50 @@ defmodule Bany.Budget do
     else
       grouped
     end
+  end
+
+  defp compute_tbb(plan_id, {this_first, _this_last}, {prev_first, prev_last}) do
+    # Cumulative TBB: all-time inflows in plan's accounts - all-time allocations for plan
+    tbb_inflow =
+      from(t in Transaction,
+        join: a in Account, on: a.id == t.account_id,
+        join: pa in "plan_accounts", on: pa.account_id == a.id and pa.plan_id == ^plan_id,
+        join: c in Category, on: c.id == t.category_id and c.is_inflow,
+        select: coalesce(sum(t.amount), 0)
+      )
+      |> Repo.one()
+
+    tbb_allocated =
+      from(a in Allocation,
+        where: a.plan_id == ^plan_id,
+        select: coalesce(sum(a.amount), 0)
+      )
+      |> Repo.one()
+
+    # Last month's inflow for the monthly reference row
+    last_month_inflow =
+      from(t in Transaction,
+        join: a in Account, on: a.id == t.account_id,
+        join: pa in "plan_accounts", on: pa.account_id == a.id and pa.plan_id == ^plan_id,
+        join: c in Category, on: c.id == t.category_id and c.is_inflow,
+        where: t.date >= ^prev_first and t.date <= ^prev_last,
+        select: coalesce(sum(t.amount), 0)
+      )
+      |> Repo.one()
+
+    # This month's allocations for the monthly reference row
+    this_month_allocated =
+      from(a in Allocation,
+        where: a.plan_id == ^plan_id and a.allocated_on == ^this_first,
+        select: coalesce(sum(a.amount), 0)
+      )
+      |> Repo.one()
+
+    %{
+      tbb: Decimal.sub(tbb_inflow, tbb_allocated),
+      last_month_inflow: last_month_inflow,
+      this_month_allocated: this_month_allocated
+    }
   end
 
   @doc """
@@ -181,6 +237,7 @@ defmodule Bany.Budget do
       {:error, %Ecto.Changeset{}}
 
   """
+  def delete_category(%Category{is_inflow: true}), do: {:error, :inflow_category_protected}
   def delete_category(%Category{} = category) do
     Repo.delete(category)
   end
@@ -251,7 +308,15 @@ defmodule Bany.Budget do
   def create_plan(attrs, user) do
     with {:ok, plan} <- %Plan{} |> Plan.changeset(attrs) |> Repo.insert() do
       Repo.insert_all("user_plans", [%{user_id: user.id, plan_id: plan.id}])
+      associate_inflow_category(plan)
       {:ok, plan}
+    end
+  end
+
+  defp associate_inflow_category(plan) do
+    case Repo.get_by(Category, is_inflow: true) do
+      nil -> :ok
+      cat -> Repo.insert_all("plan_categories", [%{plan_id: plan.id, category_id: cat.id}], on_conflict: :nothing)
     end
   end
 
