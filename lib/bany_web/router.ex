@@ -49,6 +49,10 @@ defmodule BanyWeb.Router do
       live "/payees/new", PayeeLive.Form, :new
       live "/payees/:id", PayeeLive.Show, :show
       live "/payees/:id/edit", PayeeLive.Form, :edit
+
+      live "/tags", TagLive.Index, :index
+      live "/tags/new", TagLive.Form, :new
+      live "/tags/:id/edit", TagLive.Form, :edit
     end
 
     # Require a valid plan — redirect to /plans if missing/invalid (requires login)
@@ -93,6 +97,10 @@ defmodule BanyWeb.Router do
       live "/plans/:plan_id/payees/new", PayeeLive.Form, :new
       live "/plans/:plan_id/payees/:id", PayeeLive.Show, :show
       live "/plans/:plan_id/payees/:id/edit", PayeeLive.Form, :edit
+
+      live "/plans/:plan_id/tags", TagLive.Index, :index
+      live "/plans/:plan_id/tags/new", TagLive.Form, :new
+      live "/plans/:plan_id/tags/:id/edit", TagLive.Form, :edit
     end
   end
 

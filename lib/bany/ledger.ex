@@ -9,6 +9,7 @@ defmodule Bany.Ledger do
   alias Bany.Ledger.Account
   alias Bany.Ledger.Transaction
   alias Bany.Ledger.Payee
+  alias Bany.Ledger.Tag
 
   @doc """
   Returns the list of transactions.
@@ -79,17 +80,20 @@ defmodule Bany.Ledger do
     sort_by   = Map.get(opts, :sort_by, :date)
     sort_dir  = Map.get(opts, :sort_dir, :desc)
 
+    user_id = opts[:user_id]
+
     Transaction
     |> maybe_scope_to_plan(opts[:plan_id])
     |> maybe_search(opts[:query])
     |> maybe_filter_categories(opts[:category_ids])
     |> maybe_filter_accounts(opts[:account_ids])
     |> maybe_filter_date(opts[:date_from], opts[:date_to])
+    |> maybe_filter_tags(opts[:tag_ids])
     |> apply_sort(sort_by, sort_dir)
     |> limit(^page_size)
     |> offset(^((page - 1) * page_size))
     |> Repo.all()
-    |> Repo.preload([:category, :account, :payee])
+    |> Repo.preload([:category, :account, :payee, tags: tag_preload_query(user_id)])
   end
 
   def get_filtered_transaction_ids(opts) do
@@ -99,6 +103,7 @@ defmodule Bany.Ledger do
     |> maybe_filter_categories(opts[:category_ids])
     |> maybe_filter_accounts(opts[:account_ids])
     |> maybe_filter_date(opts[:date_from], opts[:date_to])
+    |> maybe_filter_tags(opts[:tag_ids])
     |> select([t], t.id)
     |> Repo.all()
   end
@@ -110,6 +115,7 @@ defmodule Bany.Ledger do
     |> maybe_filter_categories(opts[:category_ids])
     |> maybe_filter_accounts(opts[:account_ids])
     |> maybe_filter_date(opts[:date_from], opts[:date_to])
+    |> maybe_filter_tags(opts[:tag_ids])
     |> Repo.aggregate(:count)
   end
 
@@ -165,6 +171,18 @@ defmodule Bany.Ledger do
   defp maybe_filter_accounts(q, ids) when ids in [nil, []], do: q
   defp maybe_filter_accounts(q, ids), do: from t in q, where: t.account_id in ^ids
 
+  defp maybe_filter_tags(q, ids) when ids in [nil, []], do: q
+
+  defp maybe_filter_tags(q, ids) do
+    from t in q,
+      join: tt in "transaction_tags", on: tt.transaction_id == t.id,
+      where: tt.tag_id in ^ids,
+      distinct: true
+  end
+
+  defp tag_preload_query(nil), do: Tag
+  defp tag_preload_query(user_id), do: from(t in Tag, where: t.user_id == ^user_id)
+
   defp maybe_filter_date(q, nil, nil), do: q
   defp maybe_filter_date(q, from, nil), do: from t in q, where: t.date >= ^from
   defp maybe_filter_date(q, nil, to), do: from t in q, where: t.date <= ^to
@@ -185,6 +203,8 @@ defmodule Bany.Ledger do
 
   """
   def get_transaction!(id), do: Repo.get!(Transaction, id)
+
+  def get_transaction_with_tags!(id), do: id |> get_transaction!() |> Repo.preload(:tags)
 
   @doc """
   Creates a transaction.
@@ -245,7 +265,9 @@ defmodule Bany.Ledger do
 
   def get_transactions_for_edit(ids) when is_list(ids) do
     int_ids = Enum.map(ids, fn id -> if is_binary(id), do: String.to_integer(id), else: id end)
-    from(t in Transaction, where: t.id in ^int_ids) |> Repo.all()
+    from(t in Transaction, where: t.id in ^int_ids)
+    |> Repo.all()
+    |> Repo.preload(:tags)
   end
 
   def bulk_update_transactions(ids, attrs) when is_list(ids) and is_map(attrs) do
@@ -431,6 +453,39 @@ defmodule Bany.Ledger do
   end
 
   def find_or_create_payee_by_name(_), do: nil
+
+  def list_tags_for_user(user_id) do
+    from(t in Tag, where: t.user_id == ^user_id, order_by: t.name)
+    |> Repo.all()
+  end
+
+  def get_tag!(id), do: Repo.get!(Tag, id)
+
+  def create_tag(attrs, user) do
+    %Tag{}
+    |> Tag.changeset(attrs)
+    |> Ecto.Changeset.put_change(:user_id, user.id)
+    |> Repo.insert()
+  end
+
+  def update_tag(%Tag{} = tag, attrs) do
+    tag |> Tag.changeset(attrs) |> Repo.update()
+  end
+
+  def delete_tag(%Tag{} = tag), do: Repo.delete(tag)
+
+  def change_tag(%Tag{} = tag, attrs \\ %{}), do: Tag.changeset(tag, attrs)
+
+  def set_transaction_tags(%Transaction{} = transaction, tag_ids) when is_list(tag_ids) do
+    int_ids = Enum.map(tag_ids, &if(is_binary(&1), do: String.to_integer(&1), else: &1))
+    tags = Repo.all(from t in Tag, where: t.id in ^int_ids)
+
+    transaction
+    |> Repo.preload(:tags)
+    |> Ecto.Changeset.change()
+    |> Ecto.Changeset.put_assoc(:tags, tags)
+    |> Repo.update()
+  end
 
   def delete_all do
     Repo.delete_all(Transaction)

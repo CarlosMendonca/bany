@@ -21,6 +21,26 @@ defmodule BanyWeb.TransactionLive.Form do
         <.input field={@form[:payee_id]} type="select" label="Payee" prompt="(none)" options={@payees} />
         <.input field={@form[:category_id]} type="select" label="Category" prompt="(none)" options={@categories} />
         <.input field={@form[:account_id]} type="select" label="Account" prompt="(none)" options={@accounts} />
+
+        <%!-- Tags --%>
+        <fieldset :if={@tags != []} class="fieldset mb-2">
+          <label>
+            <span class="label mb-1">Tags</span>
+            <div class="flex flex-wrap gap-2">
+              <label :for={tag <- @tags} class="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  class="checkbox checkbox-sm"
+                  name="transaction[tag_ids][]"
+                  value={tag.id}
+                  checked={tag.id in @selected_tag_ids}
+                />
+                <.tag_chip tag={tag} />
+              </label>
+            </div>
+          </label>
+        </fieldset>
+
         <footer>
           <.button phx-disable-with="Saving..." variant="primary">Save Transaction</.button>
           <.button navigate={return_path(@return_to, @transaction, @current_plan)}>Cancel</.button>
@@ -49,12 +69,16 @@ defmodule BanyWeb.TransactionLive.Form do
         do: Ledger.list_payees_for_plan(current_plan.id),
         else: Ledger.list_payees()
 
+    user = socket.assigns.current_scope.user
+    tags = Ledger.list_tags_for_user(user.id)
+
     {:ok,
      socket
      |> assign(:return_to, return_to(params["return_to"]))
      |> assign(:categories, Enum.map(categories, &{&1.name, &1.id}))
      |> assign(:accounts, Enum.map(accounts, &{&1.name, &1.id}))
      |> assign(:payees, Enum.map(payees, &{&1.name, &1.id}))
+     |> assign(:tags, tags)
      |> apply_action(socket.assigns.live_action, params)}
   end
 
@@ -62,11 +86,12 @@ defmodule BanyWeb.TransactionLive.Form do
   defp return_to(_), do: "index"
 
   defp apply_action(socket, :edit, %{"id" => id}) do
-    transaction = Ledger.get_transaction!(id)
+    transaction = Ledger.get_transaction_with_tags!(id)
 
     socket
     |> assign(:page_title, "Edit Transaction")
     |> assign(:transaction, transaction)
+    |> assign(:selected_tag_ids, Enum.map(transaction.tags, & &1.id))
     |> assign(:form, to_form(Ledger.change_transaction(transaction)))
   end
 
@@ -76,6 +101,7 @@ defmodule BanyWeb.TransactionLive.Form do
     socket
     |> assign(:page_title, "New Transaction")
     |> assign(:transaction, transaction)
+    |> assign(:selected_tag_ids, [])
     |> assign(:form, to_form(Ledger.change_transaction(transaction)))
   end
 
@@ -86,12 +112,16 @@ defmodule BanyWeb.TransactionLive.Form do
   end
 
   def handle_event("save", %{"transaction" => transaction_params}, socket) do
-    save_transaction(socket, socket.assigns.live_action, transaction_params)
+    {tag_ids_raw, transaction_params} = Map.pop(transaction_params, "tag_ids", [])
+    tag_ids = Enum.map(List.wrap(tag_ids_raw), &String.to_integer/1)
+    save_transaction(socket, socket.assigns.live_action, transaction_params, tag_ids)
   end
 
-  defp save_transaction(socket, :edit, transaction_params) do
+  defp save_transaction(socket, :edit, transaction_params, tag_ids) do
     case Ledger.update_transaction(socket.assigns.transaction, transaction_params) do
       {:ok, transaction} ->
+        Ledger.set_transaction_tags(transaction, tag_ids)
+
         {:noreply,
          socket
          |> put_flash(:info, "Transaction updated successfully")
@@ -102,9 +132,11 @@ defmodule BanyWeb.TransactionLive.Form do
     end
   end
 
-  defp save_transaction(socket, :new, transaction_params) do
+  defp save_transaction(socket, :new, transaction_params, tag_ids) do
     case Ledger.create_transaction(transaction_params) do
       {:ok, transaction} ->
+        Ledger.set_transaction_tags(transaction, tag_ids)
+
         {:noreply,
          socket
          |> put_flash(:info, "Transaction created successfully")

@@ -1,12 +1,11 @@
 # TODO
 
 ### P0 -- core feature
-* single edit and multi edit -- tweak cursor position after OK/Cancel; keyboard shortcuts to enter / exit mode
-* on categories with totals, show how much is available from the special inflow category
-* include a special category for to-be-budgeted inflow; should be added on priv/repo/seeds.exs for test/development and as a migration 
+* single edit and multi edit -- tweak cursor position after OK/Cancel; keyboard shortcuts to enter / exit mode; imeplement searchable Payee (text-box based) -- I don't like it's not keyboard navigable; no way to clear values
 * implement transaction splits between categories
 * implement transaction splits between categories between Plans
 * Plaid import with async workers
+* colorful tags
 
 ### P1 -- quality-of-life features & chores
 * on CategoryGroup, add labels for how many categories are associated
@@ -28,6 +27,8 @@
 * global select all on header
 * three states selector
 * redesign -- move navigation row to left sidebar
+* on categories with totals, show how much is available from the special inflow category
+* include a special category for to-be-budgeted inflow; should be added on priv/repo/seeds.exs for test/development and as a migration 
 
 ## Scratch pad
 

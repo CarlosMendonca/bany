@@ -61,6 +61,35 @@ defmodule BanyWeb.TransactionLive.Index do
           </div>
         </details>
 
+        <details id="tag-filter" class="dropdown" phx-hook="FilterDropdown">
+          <summary class="btn btn-outline btn-sm">
+            {tag_filter_label(@selected_tag_ids, @tags)}
+            <.icon name="hero-chevron-down-micro" />
+          </summary>
+          <div class="dropdown-content z-10 bg-base-100 rounded-box shadow-lg p-2 min-w-48 max-h-72 overflow-y-auto flex flex-col gap-1">
+            <a
+              phx-click="select_all_tags"
+              class={["link link-hover text-sm px-1", @selected_tag_ids == nil && "font-bold"]}
+            >
+              All
+            </a>
+            <div class="divider my-0" />
+            <label
+              :for={tag <- @tags}
+              class="flex items-center gap-2 cursor-pointer hover:bg-base-200 rounded px-1 py-0.5 text-sm"
+            >
+              <input
+                type="checkbox"
+                class="checkbox checkbox-sm"
+                checked={item_selected?(@selected_tag_ids, tag.id)}
+                phx-click="toggle_tag"
+                phx-value-id={tag.id}
+              />
+              <.tag_chip tag={tag} />
+            </label>
+          </div>
+        </details>
+
         <details id="account-filter" class="dropdown" phx-hook="FilterDropdown">
           <summary class="btn btn-outline btn-sm">
             {account_filter_label(@selected_account_ids, @accounts)}
@@ -140,7 +169,7 @@ defmodule BanyWeb.TransactionLive.Index do
             </form>
           </div>
         </details>
-        <%= if filters_active?(@query, @selected_category_ids, @selected_account_ids, @date_preset) do %>
+        <%= if filters_active?(@query, @selected_category_ids, @selected_account_ids, @date_preset, @selected_tag_ids) do %>
           <button phx-click="reset_filters" class="btn btn-ghost btn-sm text-error">
             <.icon name="hero-x-mark-micro" /> Clear filters
           </button>
@@ -180,6 +209,7 @@ defmodule BanyWeb.TransactionLive.Index do
             <th><.col_header col={:category} sort_by={@sort_by} sort_dir={@sort_dir}>Category</.col_header></th>
             <th><.col_header col={:payee} sort_by={@sort_by} sort_dir={@sort_dir}>Payee</.col_header></th>
             <th><.col_header col={:memo} sort_by={@sort_by} sort_dir={@sort_dir}>Memo</.col_header></th>
+            <th>Tags</th>
             <th><.col_header col={:amount} sort_by={@sort_by} sort_dir={@sort_dir}>Amount</.col_header></th>
             <th><span class="sr-only">Actions</span></th>
           </tr>
@@ -219,6 +249,17 @@ defmodule BanyWeb.TransactionLive.Index do
             </td>
             <td phx-click={JS.navigate(transaction_path(@current_plan, transaction))} class="hover:cursor-pointer">
               {highlight(transaction.memo, @query)}
+            </td>
+            <td>
+              <%= case transaction.tags do %>
+                <% [] -> %>
+                <% [tag] -> %>
+                  <.tag_chip tag={tag} />
+                <% tags -> %>
+                  <div class="flex gap-0.5">
+                    <.tag_dot :for={tag <- tags} tag={tag} />
+                  </div>
+              <% end %>
             </td>
             <td phx-click={JS.navigate(transaction_path(@current_plan, transaction))} class="hover:cursor-pointer">
               {highlight(format_amount(transaction.amount, @current_plan && @current_plan.currency), @query)}
@@ -307,6 +348,31 @@ defmodule BanyWeb.TransactionLive.Index do
             />
           </label>
 
+          <%!-- Tags (single-row edit only) --%>
+          <label :if={length(@edit_ids) == 1} class="flex flex-col gap-0.5">
+            <span class="text-xs opacity-60">Tags</span>
+            <details id="edit-bar-tags-dropdown" class="dropdown" phx-hook="FilterDropdown">
+              <summary class="input input-sm input-bordered w-36 cursor-pointer flex items-center">
+                {tag_edit_label(@edit_tag_ids, @tags)}
+              </summary>
+              <div class="dropdown-content z-10 bg-base-100 rounded-box shadow-lg p-2 min-w-48 max-h-60 overflow-y-auto flex flex-col gap-1">
+                <label
+                  :for={tag <- @tags}
+                  class="flex items-center gap-2 cursor-pointer hover:bg-base-200 rounded px-1 py-0.5 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    class="checkbox checkbox-xs"
+                    name="edit_bar[tag_ids][]"
+                    value={tag.id}
+                    checked={tag.id in @edit_tag_ids}
+                  />
+                  <.tag_chip tag={tag} />
+                </label>
+              </div>
+            </details>
+          </label>
+
           <%!-- Amount --%>
           <label class="flex flex-col gap-0.5">
             <span class="text-xs opacity-60">Amount</span>
@@ -363,6 +429,8 @@ defmodule BanyWeb.TransactionLive.Index do
         else: Ledger.list_payees()
 
     total_count = Ledger.count_transactions(current_plan && current_plan.id)
+    user = socket.assigns.current_scope.user
+    tags = Ledger.list_tags_for_user(user.id)
 
     {:ok,
      socket
@@ -370,12 +438,14 @@ defmodule BanyWeb.TransactionLive.Index do
      |> assign(:query, "")
      |> assign(:selected_category_ids, nil)
      |> assign(:selected_account_ids, nil)
+     |> assign(:selected_tag_ids, nil)
      |> assign(:date_preset, "all_time")
      |> assign(:date_from, nil)
      |> assign(:date_to, nil)
      |> assign(:categories, categories)
      |> assign(:accounts, accounts)
      |> assign(:payees, payees)
+     |> assign(:tags, tags)
      |> assign(:total_count, total_count)
      |> assign(:page, 1)
      |> assign(:page_size, 50)
@@ -384,6 +454,7 @@ defmodule BanyWeb.TransactionLive.Index do
      |> assign(:edit_ids, [])
      |> assign(:edit_changeset, nil)
      |> assign(:edit_multi_fields, MapSet.new())
+     |> assign(:edit_tag_ids, [])
      |> assign(:page_loaded, false)}
   end
 
@@ -429,6 +500,17 @@ defmodule BanyWeb.TransactionLive.Index do
     {:noreply, socket |> assign(:selected_account_ids, nil) |> assign(:page, 1) |> reload_transactions_with_reset()}
   end
 
+  def handle_event("toggle_tag", %{"id" => id_str}, socket) do
+    id = String.to_integer(id_str)
+    all_ids = Enum.map(socket.assigns.tags, & &1.id)
+    new_ids = toggle_id(socket.assigns.selected_tag_ids, id, all_ids)
+    {:noreply, socket |> assign(:selected_tag_ids, new_ids) |> assign(:page, 1) |> reload_transactions_with_reset()}
+  end
+
+  def handle_event("select_all_tags", _params, socket) do
+    {:noreply, socket |> assign(:selected_tag_ids, nil) |> assign(:page, 1) |> reload_transactions_with_reset()}
+  end
+
   def handle_event("filter_date", params, socket) do
     preset = Map.get(params, "preset", "all_time")
 
@@ -452,6 +534,7 @@ defmodule BanyWeb.TransactionLive.Index do
      |> assign(:query, "")
      |> assign(:selected_category_ids, nil)
      |> assign(:selected_account_ids, nil)
+     |> assign(:selected_tag_ids, nil)
      |> assign(:date_preset, "all_time")
      |> assign(:date_from, nil)
      |> assign(:date_to, nil)
@@ -510,14 +593,24 @@ defmodule BanyWeb.TransactionLive.Index do
     base = struct(%Bany.Ledger.Transaction{}, common)
     changeset = to_form(Ledger.change_transaction(base), as: :edit_bar)
 
+    edit_tag_ids =
+      if length(ids) == 1 do
+        t = Enum.find(transactions, fn t -> to_string(t.id) == hd(ids) end)
+        if t, do: Enum.map(t.tags, & &1.id), else: []
+      else
+        []
+      end
+
     {:noreply,
      socket
      |> assign(:edit_ids, ids)
      |> assign(:edit_changeset, changeset)
-     |> assign(:edit_multi_fields, multi_fields)}
+     |> assign(:edit_multi_fields, multi_fields)
+     |> assign(:edit_tag_ids, edit_tag_ids)}
   end
 
   def handle_event("edit_bar_save", %{"edit_bar" => params}, socket) do
+    {tag_ids_raw, params} = Map.pop(params, "tag_ids", [])
     params = resolve_payee_param(params)
     ids = socket.assigns.edit_ids
 
@@ -525,7 +618,10 @@ defmodule BanyWeb.TransactionLive.Index do
       t = Ledger.get_transaction!(String.to_integer(hd(ids)))
 
       case Ledger.update_transaction(t, params) do
-        {:ok, _} ->
+        {:ok, updated} ->
+          tag_ids = Enum.map(List.wrap(tag_ids_raw), &String.to_integer/1)
+          Ledger.set_transaction_tags(updated, tag_ids)
+
           {:noreply,
            socket
            |> clear_edit_state()
@@ -577,6 +673,7 @@ defmodule BanyWeb.TransactionLive.Index do
     |> assign(:edit_ids, [])
     |> assign(:edit_changeset, nil)
     |> assign(:edit_multi_fields, MapSet.new())
+    |> assign(:edit_tag_ids, [])
   end
 
   defp payee_name_value(changeset, multi_fields, payees) do
@@ -624,13 +721,15 @@ defmodule BanyWeb.TransactionLive.Index do
       query: query,
       selected_category_ids: cat_ids,
       selected_account_ids: acc_ids,
+      selected_tag_ids: tag_ids,
       date_preset: preset,
       date_from: date_from,
       date_to: date_to,
       page: page,
       page_size: page_size,
       sort_by: sort_by,
-      sort_dir: sort_dir
+      sort_dir: sort_dir,
+      current_scope: scope
     } = socket.assigns
 
     {resolved_from, resolved_to} =
@@ -641,6 +740,8 @@ defmodule BanyWeb.TransactionLive.Index do
       query: query,
       category_ids: cat_ids,
       account_ids: acc_ids,
+      tag_ids: tag_ids,
+      user_id: scope.user.id,
       date_from: resolved_from,
       date_to: resolved_to,
       page: page,
@@ -731,6 +832,15 @@ defmodule BanyWeb.TransactionLive.Index do
   defp account_filter_label(nil, _), do: "Account"
   defp account_filter_label(ids, _), do: "#{length(ids)} selected"
 
+  defp tag_filter_label(nil, _), do: "Tags"
+  defp tag_filter_label(ids, _), do: "#{length(ids)} selected"
+
+  defp tag_edit_label([], _tags), do: "No tags"
+  defp tag_edit_label(ids, tags) do
+    names = tags |> Enum.filter(&(&1.id in ids)) |> Enum.map(& &1.name)
+    Enum.join(names, ", ")
+  end
+
   defp date_filter_label("all_time", _, _), do: "Date"
   defp date_filter_label("current_month", _, _), do: "This Month"
   defp date_filter_label("previous_month", _, _), do: "Last Month"
@@ -739,8 +849,8 @@ defmodule BanyWeb.TransactionLive.Index do
   defp date_filter_label("custom", nil, t), do: "Until #{t}"
   defp date_filter_label("custom", f, t), do: "#{f} – #{t}"
 
-  defp filters_active?(query, cat_ids, acc_ids, date_preset) do
-    query != "" or cat_ids != nil or acc_ids != nil or date_preset != "all_time"
+  defp filters_active?(query, cat_ids, acc_ids, date_preset, tag_ids) do
+    query != "" or cat_ids != nil or acc_ids != nil or date_preset != "all_time" or tag_ids != nil
   end
 
   defp item_selected?(nil, _id), do: true

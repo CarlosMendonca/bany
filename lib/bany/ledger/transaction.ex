@@ -9,6 +9,7 @@ defmodule Bany.Ledger.Transaction do
     belongs_to :category, Bany.Budget.Category
     belongs_to :account, Bany.Ledger.Account
     belongs_to :payee, Bany.Ledger.Payee
+    many_to_many :tags, Bany.Ledger.Tag, join_through: "transaction_tags"
 
     timestamps(type: :utc_datetime)
   end

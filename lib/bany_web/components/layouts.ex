@@ -121,6 +121,13 @@ defmodule BanyWeb.Layouts do
             <span class="[[data-collapsed]_&]:hidden">Payees</span>
           </a>
           <a
+            href={tags_href(@current_plan)}
+            class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
+          >
+            <.icon name="hero-tag" class="size-5 shrink-0" />
+            <span class="[[data-collapsed]_&]:hidden">Tags</span>
+          </a>
+          <a
             href={transactions_href(@current_plan)}
             class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-base-200"
           >
@@ -193,6 +200,9 @@ defmodule BanyWeb.Layouts do
 
   defp payees_href(nil), do: ~p"/payees"
   defp payees_href(plan), do: ~p"/plans/#{plan}/payees"
+
+  defp tags_href(nil), do: ~p"/tags"
+  defp tags_href(plan), do: ~p"/plans/#{plan}/tags"
 
   @doc """
   Shows the flash group with standard titles and content.

@@ -264,8 +264,8 @@ defmodule BanyWeb.CoreComponents do
     """
   end
 
-  # Helper used by inputs to generate form errors
-  defp error(assigns) do
+  @doc "Renders a form field error message."
+  def error(assigns) do
     ~H"""
     <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
       <.icon name="hero-exclamation-circle" class="size-5" />
@@ -465,5 +465,34 @@ defmodule BanyWeb.CoreComponents do
   """
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
+  end
+
+  @doc "Renders a tag chip — colored pill with name text."
+  attr :tag, :map, required: true
+
+  def tag_chip(assigns) do
+    ~H"""
+    <span
+      data-tag-color={@tag.color}
+      class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border"
+      style="background:var(--tag-bg);border-color:var(--tag-border);color:var(--tag-text)"
+    >
+      {@tag.name}
+    </span>
+    """
+  end
+
+  @doc "Renders a compact tag dot — small colored circle with tooltip, no text."
+  attr :tag, :map, required: true
+
+  def tag_dot(assigns) do
+    ~H"""
+    <span
+      data-tag-color={@tag.color}
+      title={@tag.name}
+      class="inline-block w-3 h-3 rounded-full border"
+      style="background:var(--tag-bg);border-color:var(--tag-border)"
+    />
+    """
   end
 end
